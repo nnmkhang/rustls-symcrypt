@@ -1,8 +1,7 @@
+/* Hash functions. For further documentation please refer to rust_symcrypt::hash */
 use rustls::crypto::hash;
 use rust_symcrypt::hash::{Sha256State, Sha384State, HashState, sha256, sha384};
 
-
-/// Impl rustls::hash::Hash trait for Sha256, Underlying code can be found in rust_symcrypt::hash
 pub struct Sha256;
 pub struct Sha256Context(Sha256State);
 
@@ -43,7 +42,6 @@ impl hash::Context for Sha256Context {
     }
 }
 
-/// Impl rustls::hash::Hash trait for Sha384, Underlying code can be found in rust_symcrypt::hash
 pub struct Sha384;
 struct Sha384Context(Sha384State);
 
