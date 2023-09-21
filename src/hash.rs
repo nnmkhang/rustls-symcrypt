@@ -1,4 +1,4 @@
-/* Hash functions. For further documentation please refer to rust_symcrypt::hash */
+//! Hash functions. For further documentation please refer to rust_symcrypt::hash
 use rustls::crypto::hash;
 use rust_symcrypt::hash::{Sha256State, Sha384State, HashState, sha256, sha384};
 
@@ -25,15 +25,15 @@ impl hash::Hash for Sha256 {
 
 impl hash::Context for Sha256Context {
     fn fork_finish(&self) -> hash::Output {
-        let new_context = self.0.copy();
+        let mut new_context = self.0.clone();
         hash::Output::new(&new_context.result()[..])
     }
 
     fn fork(&self) -> Box<dyn hash::Context> {
-        Box::new(Sha256Context(*self.0.copy()))
+        Box::new(Sha256Context(self.0.clone()))
     }
 
-    fn finish(self: Box<Self>) -> hash::Output {
+    fn finish(mut self: Box<Self>) -> hash::Output {
         hash::Output::new(&self.0.result()[..])
     }
 
@@ -65,15 +65,15 @@ impl hash::Hash for Sha384 {
 
 impl hash::Context for Sha384Context {
     fn fork_finish(&self) -> hash::Output {
-        let new_context = self.0.copy();
+        let mut new_context = self.0.clone();
         hash::Output::new(&new_context.result()[..])
     }
 
     fn fork(&self) -> Box<dyn hash::Context> {
-        Box::new(Sha384Context(*self.0.copy()))
+        Box::new(Sha384Context(self.0.clone()))
     }
 
-    fn finish(self: Box<Self>) -> hash::Output {
+    fn finish(mut self: Box<Self>) -> hash::Output {
         hash::Output::new(&self.0.result()[..])
     }
 

@@ -1,4 +1,4 @@
-/* Hmac functions. For further documentation please refer to rust_symcrypt::hmac */
+//! Hmac functions. For further documentation please refer to rust_symcrypt::hmac
 use rustls::crypto::hmac;
 use rust_symcrypt::hmac::{HmacSha256State, HmacSha384State, HmacState};
 
@@ -33,7 +33,7 @@ impl hmac::Key for HmacSha256Key {
     }
 
     fn sign_concat(&self, first: &[u8], middle: &[&[u8]], last: &[u8]) -> hmac::Tag {
-        let mut new_state = *self.0.copy();
+        let mut new_state = self.0.clone();
         new_state.append(first);
         for d in middle {
             new_state.append(d);
@@ -55,7 +55,7 @@ impl hmac::Key for HmacSha384Key {
     }
 
     fn sign_concat(&self, first: &[u8], middle: &[&[u8]], last: &[u8]) -> hmac::Tag {
-        let mut new_state = *self.0.copy();
+        let mut new_state = self.0.clone();
         new_state.append(first);
         for d in middle {
             new_state.append(d);
