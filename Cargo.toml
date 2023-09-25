@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 rustls = { git = "https://github.com/rustls/rustls.git" }
-rust-symcrypt = {version = "0.1", path = "D:\\rust\\pfx_leak\\rust-symcrypt-sys\\rust-symcrypt"}
+rust-symcrypt = {version = "0.1", path = "C:\\Code\\rust-symcrypt-sys\\rust-symcrypt"}
 hex = "0.4.3"
