@@ -1,8 +1,8 @@
-/// TEMP FILE FOR TESTING
-
+use rustls::crypto::hmac::Hmac;
+use rustls_symcrypt::ecdh::*;
+/// TEMP FILE FOR TESTING DO NOT REVIEW
 use rustls_symcrypt::hash::*;
 use rustls_symcrypt::hmac::*;
-use rustls::crypto::hmac::Hmac;
 
 use rustls::crypto::hash::Hash;
 
@@ -17,10 +17,10 @@ fn main() {
     let data = hex::decode("641ec2cf711e").unwrap();
     let expected: &str = "cfdbd6c9acf9842ce04e8e6a0421838f858559cf22d2ea8a38bd07d5e4692233";
 
-    let result = sha256_instance.hash(&data); 
+    let result = sha256_instance.hash(&data);
     assert_eq!(hex::encode(result), expected);
 
-    let mut new_instance = sha256_instance.start(); 
+    let mut new_instance = sha256_instance.start();
     new_instance.update(&data);
 
     let fork_result = new_instance.fork_finish();
@@ -31,10 +31,7 @@ fn main() {
 
     println!("Hello, world!");
 
-
-
-
-    // hmac testing 
+    // hmac testing
 
     let sha256_hmac = HmacSha256;
     println!("{:?}", sha256_hmac.hash_output_len());
@@ -49,10 +46,16 @@ fn main() {
 
     let result = sha256_hmac_state.sign_concat(&data1, &[&data2], &data3);
     assert_eq!(hex::encode(result), expected);
-    
+
     println!("{:?}", sha256_hmac_state.tag_len());
 
     let result2 = sha256_hmac_state.sign(&[&data4]);
     assert_eq!(hex::encode(result2), expected);
 
+    // ecdh testing
+    let echd_test = X25519;
+
+    let ecdh_test_state = echd_test.start().unwrap();
+
+    println!("{:?}", ecdh_test_state.group());
 }
