@@ -5,7 +5,6 @@ use rustls::{Error, NamedGroup};
 
 use rust_symcrypt::ecdh::EcDh;
 use rust_symcrypt::eckey;
-use rust_symcrypt::symcrypt_init;
 
 /// KxGroup is a struct that easily ties rustls::NamedGroup to the symcrypt_sys::ecurve::CurveType.
 ///
@@ -63,8 +62,6 @@ pub static SECP384R1: &dyn SupportedKxGroup = &KxGroup {
 /// [`name()`] returns the NamedGroup of the current KeyExchange group.
 impl SupportedKxGroup for KxGroup {
     fn start(&self) -> Result<Box<(dyn ActiveKeyExchange + 'static)>, GetRandomFailed> {
-        symcrypt_init(); // Calling before symcrypt_sys::ecdh::EcDh::new()
-
         let ecdh_state = EcDh::new(self.curve_type).map_err(|_| GetRandomFailed)?;
         let pub_key = ecdh_state
             .get_public_key_bytes()
