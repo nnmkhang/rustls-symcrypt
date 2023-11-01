@@ -18,12 +18,12 @@ pub struct KxGroup {
 
 /// KeyExchange is a struct that defines the state for EcDh operations
 ///
-/// the [`state'] field is tied to the ['EcDh'] struct from symcrypt_sys.
+/// the [`state`] field is tied to the [`EcDh`] struct from symcrypt_sys.
 ///
-/// the ['name'] and ['curve_type'] provide access to the rustls::NamedGroup
+/// the [`name`] and [`curve_type`] provide access to the rustls::NamedGroup
 /// and symcrypt_sys::ecurve::CurveType respectively
 ///
-/// ['pub_key'] is a Vec<u8> that represents the public key that is tied to the EcDh state.
+/// [`pub_key`] is a Vec<u8> that represents the public key that is tied to the EcDh state.
 /// The private_key is not exposed.
 pub struct KeyExchange {
     state: EcDh,
