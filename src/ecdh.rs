@@ -33,21 +33,21 @@ pub struct KeyExchange {
 }
 
 /// All supported KeyExchange groups.
-pub static ALL_KX_GROUPS: &[&dyn SupportedKxGroup] = &[X25519, SECP256R1, SECP384R1];
+pub const ALL_KX_GROUPS: &[&dyn SupportedKxGroup] = &[X25519, SECP256R1, SECP384R1];
 
 /// Since the type trait size cannot be determined at compile time, we must use trait objects, hence the &dyn SupportedKxGroup
 /// annotation. Similarly, KxGroup must then also be taken as a reference.
-pub static X25519: &dyn SupportedKxGroup = &KxGroup {
+pub const X25519: &dyn SupportedKxGroup = &KxGroup {
     name: NamedGroup::X25519,
     curve_type: eckey::CurveType::Curve25519,
 };
 
-pub static SECP256R1: &dyn SupportedKxGroup = &KxGroup {
+pub const SECP256R1: &dyn SupportedKxGroup = &KxGroup {
     name: NamedGroup::secp384r1,
     curve_type: eckey::CurveType::NistP384,
 };
 
-pub static SECP384R1: &dyn SupportedKxGroup = &KxGroup {
+pub const SECP384R1: &dyn SupportedKxGroup = &KxGroup {
     name: NamedGroup::secp384r1,
     curve_type: eckey::CurveType::NistP256,
 };
@@ -55,9 +55,6 @@ pub static SECP384R1: &dyn SupportedKxGroup = &KxGroup {
 /// Impl for the trait SupportedKxGroup
 ///
 /// [`start()`] creates a new symcrypt_sys::EcDh struct and subsequently, a new KeyExchange struct.
-/// symcrypt_sys::symcrypt_init() must be called before any EcDh functions. This call is blocking and any subsequent calls to
-/// symcrypt_init() will be no-ops. Specific errors from symcrypt_sys::ecdh will not be tracked and not propagated up to the caller,
-/// [`GetRandomFailed`] will be returned instead.
 ///
 /// [`name()`] returns the NamedGroup of the current KeyExchange group.
 impl SupportedKxGroup for KxGroup {
