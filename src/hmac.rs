@@ -8,8 +8,8 @@ use rustls::crypto::hmac::{Hmac, Key, Tag};
 /// HmacShaXXXKey is a wrapper around HmacShaXXXState This is what needs to
 /// be initialized in order to run stateful operations on the SymCrypt HmacShaXXXState
 ///
-/// 
-/// 
+///
+///
 /// Impl's for the Hash trait for both HmacSha256 and HmacSha384 implement the Ruslts traits for hashing
 ///
 /// [`with_key()`] creates a new Box<>'d HmacShaXXXState via its wrapper HmacShaXXXKey. This state is needed in order to
@@ -18,7 +18,7 @@ use rustls::crypto::hmac::{Hmac, Key, Tag};
 /// [`hash_output_len()`] returns the hash output length based on the hash algorithm.
 ///
 ///
-/// 
+///
 /// Impl's for the Key trait for both HmacSha256Key and HmacSha384Key implement the Rustls trait for
 /// Key which is called state on the SymCrypt side.
 ///
