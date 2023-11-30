@@ -18,6 +18,7 @@ const CHAHCA_NONCE_LENGTH: usize = 12;
 const CHACHA_KEY_LENGTH: usize = 32;
 const GCM_FULL_NONCE_LENGTH: usize = 12;
 const GCM_EXPLICIT_NONCE_LENGTH: usize = 8;
+const GCM_IMPLICIT_NONCE_LENGTH: usize = 4;
 const GCM_TAG_LENGTH: usize = 16;
 
 /// ChaCha for TLS 1.2
@@ -111,8 +112,8 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
             Ok(_) => {
                 payload.extend_from_slice(&tag); // Add tag to the end of the payload.
                 Ok(OpaqueMessage::new(
-                    rustls::ContentType::ApplicationData,
-                    rustls::ProtocolVersion::TLSv1_2,
+                    msg.typ,
+                    msg.version,
                     payload,
                 ))
             }
@@ -140,11 +141,10 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
 impl MessageDecrypter for Tls12ChaCha20Poly1305 {
     fn decrypt(&self, mut msg: OpaqueMessage, seq: u64) -> Result<PlainMessage, rustls::Error> {
         let payload_len = msg.payload().len(); // This length includes the message and the tag.
-        let message_len = payload_len - CHACHA_TAG_LENGTH; // This length is only the message and does not include tag.
-
         if payload_len < CHACHA_TAG_LENGTH {
             return Err(rustls::Error::DecryptError);
         }
+        let message_len = payload_len - CHACHA_TAG_LENGTH; // This length is only the message and does not include tag.
 
         // Set up needed parameters for ChaCha decrypt
         let nonce = Nonce::new(&self.iv, seq);
@@ -190,7 +190,7 @@ pub struct Tls12Gcm {
 /// [`iv`] is an implicit Iv that must be 4 bytes.
 pub struct Gcm12Decrypt {
     key: GcmExpandedKey,
-    iv: [u8; 4],
+    iv: [u8; GCM_IMPLICIT_NONCE_LENGTH],
 }
 
 /// Gcm12Encrypt impls [`MessageEncrypter`]
@@ -204,11 +204,11 @@ pub struct Gcm12Encrypt {
 
 impl Tls12AeadAlgorithm for Tls12Gcm {
     fn encrypter(&self, key: AeadKey, iv: &[u8], extra: &[u8]) -> Box<dyn MessageEncrypter> {
-        assert_eq!(iv.len(), 4);
+        assert_eq!(iv.len(), GCM_IMPLICIT_NONCE_LENGTH);
         assert_eq!(extra.len(), 8);
         let mut full_iv = [0u8; GCM_FULL_NONCE_LENGTH];
-        full_iv[..4].copy_from_slice(iv);
-        full_iv[4..].copy_from_slice(extra);
+        full_iv[..GCM_IMPLICIT_NONCE_LENGTH].copy_from_slice(iv);
+        full_iv[GCM_IMPLICIT_NONCE_LENGTH..].copy_from_slice(extra);
 
         // Unwrapping here, in the scenarios that GcmExpandKey would fail should result in a panic, ie: Not enough memory.
         Box::new(Gcm12Encrypt {
@@ -218,8 +218,8 @@ impl Tls12AeadAlgorithm for Tls12Gcm {
     }
 
     fn decrypter(&self, key: AeadKey, iv: &[u8]) -> Box<dyn MessageDecrypter> {
-        assert_eq!(iv.len(), 4);
-        let mut implicit_iv = [0u8; 4];
+        assert_eq!(iv.len(), GCM_IMPLICIT_NONCE_LENGTH);
+        let mut implicit_iv = [0u8; GCM_IMPLICIT_NONCE_LENGTH];
         implicit_iv.copy_from_slice(iv);
 
         // Unwrapping here, in the scenarios that GcmExpandKey would fail should result in a panic, ie: Not enough memory.
@@ -232,7 +232,7 @@ impl Tls12AeadAlgorithm for Tls12Gcm {
     fn key_block_shape(&self) -> KeyBlockShape {
         KeyBlockShape {
             enc_key_len: self.algo_type.key_size(), // Can be either 16 or 32
-            fixed_iv_len: 4,
+            fixed_iv_len: GCM_IMPLICIT_NONCE_LENGTH,
             explicit_nonce_len: GCM_EXPLICIT_NONCE_LENGTH,
         }
     }
@@ -244,8 +244,8 @@ impl Tls12AeadAlgorithm for Tls12Gcm {
         explicit: &[u8],
     ) -> Result<ConnectionTrafficSecrets, UnsupportedOperationError> {
         let mut gcm_iv = [0; GCM_FULL_NONCE_LENGTH];
-        gcm_iv[..4].copy_from_slice(iv);
-        gcm_iv[4..].copy_from_slice(explicit);
+        gcm_iv[..GCM_IMPLICIT_NONCE_LENGTH].copy_from_slice(iv);
+        gcm_iv[GCM_IMPLICIT_NONCE_LENGTH..].copy_from_slice(explicit);
 
         match self.algo_type.key_size() {
             16 => Ok(ConnectionTrafficSecrets::Aes128Gcm {
@@ -273,7 +273,7 @@ impl MessageEncrypter for Gcm12Encrypt {
         // Construct the payload
         let nonce = Nonce::new(&Iv::copy(&self.full_iv), seq);
         let mut payload = Vec::with_capacity(total_len);
-        payload.extend_from_slice(&nonce.0[4..]);
+        payload.extend_from_slice(&nonce.0[GCM_IMPLICIT_NONCE_LENGTH..]);
         payload.extend_from_slice(msg.payload);
 
         let mut tag = [0u8; GCM_TAG_LENGTH];
@@ -289,8 +289,8 @@ impl MessageEncrypter for Gcm12Encrypt {
         );
         payload.extend_from_slice(&tag);
         Ok(OpaqueMessage::new(
-            rustls::ContentType::ApplicationData,
-            rustls::ProtocolVersion::TLSv1_2,
+            msg.typ,
+            msg.version,
             payload,
         ))
     }
@@ -309,7 +309,7 @@ impl MessageEncrypter for Gcm12Encrypt {
 impl MessageDecrypter for Gcm12Decrypt {
     fn decrypt(&self, mut msg: OpaqueMessage, seq: u64) -> Result<PlainMessage, rustls::Error> {
         let payload_len = msg.payload().len(); // This length includes the explicit iv, message and tag
-        if payload_len < GCM_TAG_LENGTH {
+        if payload_len < GCM_TAG_LENGTH + GCM_EXPLICIT_NONCE_LENGTH {
             return Err(rustls::Error::DecryptError);
         }
 
@@ -317,8 +317,8 @@ impl MessageDecrypter for Gcm12Decrypt {
         // iv is taken from the first 8 bytes of the payload. The explicit iv will not be encrypted.
         let payload = msg.payload();
         let mut nonce = [0u8; GCM_FULL_NONCE_LENGTH];
-        nonce[..4].copy_from_slice(&self.iv);
-        nonce[4..].copy_from_slice(&payload[..GCM_EXPLICIT_NONCE_LENGTH]);
+        nonce[..GCM_IMPLICIT_NONCE_LENGTH].copy_from_slice(&self.iv);
+        nonce[GCM_IMPLICIT_NONCE_LENGTH..].copy_from_slice(&payload[..GCM_EXPLICIT_NONCE_LENGTH]);
 
         // Set up needed parameters for Gcm decrypt
         let mut tag = [0u8; GCM_TAG_LENGTH];

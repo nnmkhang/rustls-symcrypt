@@ -97,7 +97,7 @@ impl MessageEncrypter for Tls13ChaCha20Poly1305 {
                 payload.extend_from_slice(&tag); // Add tag to the end of the payload.
                 Ok(OpaqueMessage::new(
                     rustls::ContentType::ApplicationData,
-                    rustls::ProtocolVersion::TLSv1_3,
+                    rustls::ProtocolVersion::TLSv1_3, // !TODO: ask rustls why they have 1_2 rather than 1_3 here.
                     payload,
                 ))
             }
@@ -149,7 +149,7 @@ impl MessageDecrypter for Tls13ChaCha20Poly1305 {
         ) {
             Ok(_) => {
                 payload.truncate(message_length);
-                msg.into_tls13_unpadded_message()
+                msg.into_tls13_unpadded_message() // This removes the optional padding of zero bytes.
             }
             Err(symcrypt_error) => {
                 let custom_error_message = format!(
@@ -173,16 +173,13 @@ pub struct Tls13Gcm {
 
 /// Algo types for GCM TLS 1.3 and TLS 1.2
 pub enum AesGcm {
-    Aes128Gcm,
-    Aes256Gcm,
+    Aes128Gcm = 16,
+    Aes256Gcm = 32,
 }
 
 impl AesGcm {
     pub fn key_size(&self) -> usize {
-        match self {
-            AesGcm::Aes128Gcm => 16,
-            AesGcm::Aes256Gcm => 32,
-        }
+        *self as usize
     }
 }
 
@@ -211,9 +208,9 @@ impl Tls13AeadAlgorithm for Tls13Gcm {
             iv: iv,
         })
     }
-    
+
     fn key_len(&self) -> usize {
-        self.algo_type.key_size()
+        self.key_len()
     }
 
     fn extract_keys(
@@ -260,7 +257,7 @@ impl MessageEncrypter for Tls13GcmState {
         payload.extend_from_slice(&tag);
         Ok(OpaqueMessage::new(
             rustls::ContentType::ApplicationData,
-            rustls::ProtocolVersion::TLSv1_3,
+            rustls::ProtocolVersion::TLSv1_3, // TODO: ask rustls why they have 1_2 rather than 1_3 here
             payload,
         ))
     }
@@ -272,7 +269,7 @@ impl MessageEncrypter for Tls13GcmState {
 
 /// [`MessageDecrypter`] for GCM 1.3
 /// the [`payload`] field that comes from the [`OpaqueMessage`] is structured to include the message which is an arbitrary length,
-/// an encoding type that is 1 byte and then finally the tag which is 16 bytes.
+/// an encoding type that is 1 byte. After the encoding byte there can be a padding of 0 or more zero bytes, and finally the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                       ^   ^  ^                                                   ^
 ///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
@@ -299,7 +296,7 @@ impl MessageDecrypter for Tls13GcmState {
         {
             Ok(()) => {
                 payload.truncate(message_length);
-                msg.into_tls13_unpadded_message()
+                msg.into_tls13_unpadded_message() // This removes the optional padding of zero bytes.
             }
             Err(symcrypt_error) => {
                 let custom_error_message = format!(
