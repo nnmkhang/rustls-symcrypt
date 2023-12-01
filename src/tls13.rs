@@ -173,13 +173,16 @@ pub struct Tls13Gcm {
 
 /// Algo types for GCM TLS 1.3 and TLS 1.2
 pub enum AesGcm {
-    Aes128Gcm = 16,
-    Aes256Gcm = 32,
+    Aes128Gcm,
+    Aes256Gcm,
 }
 
 impl AesGcm {
     pub fn key_size(&self) -> usize {
-        *self as usize
+        match self {
+            AesGcm::Aes128Gcm => 16,
+            AesGcm::Aes256Gcm => 32,
+        }
     }
 }
 
