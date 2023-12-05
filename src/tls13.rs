@@ -213,7 +213,7 @@ impl Tls13AeadAlgorithm for Tls13Gcm {
     }
 
     fn key_len(&self) -> usize {
-        self.key_len()
+        self.algo_type.key_size()
     }
 
     fn extract_keys(
