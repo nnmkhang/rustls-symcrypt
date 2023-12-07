@@ -27,7 +27,7 @@ use rustls::crypto::hash::{Context, Hash, HashAlgorithm, Output};
 ///
 /// [`fork_finish()`] creates clones of the current hash state and then returns the clone'd hash result
 /// There is no intermediate fork operation like this for this native to SymCrypt so a clone must be created.
-/// 
+///
 /// [`fork()`] creates a new ShaXXXContext that is a clone of the current Hash state
 ///
 /// [`finish()`] returns the hash output for the current ShaXXXContext. This results in the end of lifetime for the ShaXXXContext and therefore is
