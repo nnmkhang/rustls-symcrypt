@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 rustls = { git = "https://github.com/rustls/rustls.git" }
-rust-symcrypt = {version = "0.1", path = "C:\\Code\\rust-symcrypt-sys\\rust-symcrypt"}
+symcrypt = "0.1.0"
 hex = "0.4.3"

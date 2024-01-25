@@ -1,6 +1,6 @@
 //! Hash functions. For further documentation please refer to rust_symcrypt::hash
 //!
-use rust_symcrypt::hash::{sha256, sha384, HashState, Sha256State, Sha384State};
+use symcrypt::hash::{sha256, sha384, HashState, Sha256State, Sha384State};
 use rustls::crypto::hash::{Context, Hash, HashAlgorithm, Output};
 
 /// ShaXXX is a struct that represents either a Sha256 or Sha384 hash Algorithm

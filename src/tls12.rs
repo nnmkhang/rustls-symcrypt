@@ -1,11 +1,11 @@
 //! GCM and ChaCha functions for TLS 1.2. For further documentation please refer to rust_symcrypt::gcm and symcrypt::chacha
 
 use crate::tls13::AesGcm;
-use rust_symcrypt::block_ciphers::BlockCipherType;
-use rust_symcrypt::chacha::{
+use symcrypt::block_ciphers::BlockCipherType;
+use symcrypt::chacha::{
     chacha20_poly1305_decrypt_in_place, chacha20_poly1305_encrypt_in_place,
 };
-use rust_symcrypt::gcm::GcmExpandedKey;
+use symcrypt::gcm::GcmExpandedKey;
 use rustls::crypto::cipher::{
     make_tls12_aad, AeadKey, BorrowedPlainMessage, Iv, KeyBlockShape, MessageDecrypter,
     MessageEncrypter, Nonce, OpaqueMessage, PlainMessage, Tls12AeadAlgorithm,

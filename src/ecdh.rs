@@ -3,8 +3,8 @@
 use rustls::crypto::{ActiveKeyExchange, GetRandomFailed, SharedSecret, SupportedKxGroup};
 use rustls::{Error, NamedGroup};
 
-use rust_symcrypt::ecdh::EcDh;
-use rust_symcrypt::eckey;
+use symcrypt::ecdh::EcDh;
+use symcrypt::eckey;
 
 /// KxGroup is a struct that easily ties rustls::NamedGroup to the symcrypt_sys::ecurve::CurveType.
 ///

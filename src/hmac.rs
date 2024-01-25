@@ -1,6 +1,6 @@
 //! Hmac functions. For further documentation please refer to rust_symcrypt::hmac
 
-use rust_symcrypt::hmac::{HmacSha256State, HmacSha384State, HmacState};
+use symcrypt::hmac::{HmacSha256State, HmacSha384State, HmacState};
 use rustls::crypto::hmac::{Hmac, Key, Tag};
 
 /// HmacShaXXX is a struct that represents either HmacSha256 or HmacSha384
