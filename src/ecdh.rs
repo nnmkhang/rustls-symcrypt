@@ -58,7 +58,7 @@ pub const SECP384R1: &dyn SupportedKxGroup = &KxGroup {
 ///
 /// [`name()`] returns the NamedGroup of the current KeyExchange group.
 impl SupportedKxGroup for KxGroup {
-    fn start(&self) -> Result<Box<(dyn ActiveKeyExchange + 'static)>, GetRandomFailed> {
+    fn start(&self) -> Result<Box<(dyn ActiveKeyExchange)>, Error> {
         let ecdh_state = EcDh::new(self.curve_type).map_err(|_| GetRandomFailed)?;
         let pub_key = ecdh_state
             .get_public_key_bytes()
@@ -79,13 +79,13 @@ impl SupportedKxGroup for KxGroup {
 
 /// Impl for the trait for ActiveKeyExchange in order to do stateful operations on the EcDh state.
 ///
-/// [`complete()`] takes in a [`peer_pub_key`] and creates a secondary EcDh struct in order to generate the secret agreement.
+/// `complete()` takes in a `peer_pub_key` and creates a secondary EcDh struct in order to generate the secret agreement.
 ///
 /// Errors from SymCrypt will be propagated back to the user as a rustls::Error::GeneralError.
 ///
-/// [`pub_key()`] will return a ref to the Vec<u8> that holds the public key.
+/// `pub_key()` will return a ref to the Vec<u8> that holds the public key.
 ///
-/// [`group()`] will return the NamedGroup of the KeyExchange
+/// `group()` will return the NamedGroup of the KeyExchange
 impl ActiveKeyExchange for KeyExchange {
     fn complete(self: Box<Self>, peer_pub_key: &[u8]) -> Result<SharedSecret, Error> {
         let peer_ecdh = match EcDh::from_public_key_bytes(self.curve_type, peer_pub_key) {

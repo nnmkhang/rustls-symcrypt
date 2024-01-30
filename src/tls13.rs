@@ -7,7 +7,7 @@ use symcrypt::chacha::{
 use symcrypt::gcm::GcmExpandedKey;
 use rustls::crypto::cipher::{
     make_tls13_aad, AeadKey, BorrowedPlainMessage, Iv, MessageDecrypter, MessageEncrypter, Nonce,
-    OpaqueMessage, PlainMessage, Tls13AeadAlgorithm, UnsupportedOperationError,
+    BorrowedOpaqueMessage,OpaqueMessage, PlainMessage, Tls13AeadAlgorithm, UnsupportedOperationError,
 };
 use rustls::ConnectionTrafficSecrets;
 
@@ -71,7 +71,7 @@ impl Tls13AeadAlgorithm for Tls13ChaCha {
 ///       ^                       ^   ^  ^                                                   ^
 ///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
 impl MessageEncrypter for Tls13ChaCha20Poly1305 {
-    fn encrypt(&self, msg: BorrowedPlainMessage, seq: u64) -> Result<OpaqueMessage, rustls::Error> {
+    fn encrypt(&mut self, msg: BorrowedPlainMessage, seq: u64) -> Result<OpaqueMessage, rustls::Error> {
         // Adding the size of message, the tag and encoding type to the capacity of payload vector.
         let total_len = msg.payload.len() + 1 + CHACHA_TAG_LENGTH;
         let mut payload = Vec::with_capacity(total_len);
@@ -123,8 +123,8 @@ impl MessageEncrypter for Tls13ChaCha20Poly1305 {
 ///       ^                       ^   ^  ^                                                   ^
 ///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
 impl MessageDecrypter for Tls13ChaCha20Poly1305 {
-    fn decrypt(&self, mut msg: OpaqueMessage, seq: u64) -> Result<PlainMessage, rustls::Error> {
-        let mut payload = msg.payload_mut();
+    fn decrypt<'a>(&mut self, msg: BorrowedOpaqueMessage<'a>, seq: u64) -> Result<BorrowedPlainMessage<'a>, rustls::Error> {
+        let mut payload = msg.payload; // This is mutable since it is a reference of BorrowedPayload
         let payload_len = payload.len(); // This length includes the message, encoding, and tag.
 
         // Ensure that the length is over 16 bytes or there is a decryption error.
@@ -235,7 +235,7 @@ impl Tls13AeadAlgorithm for Tls13Gcm {
 ///       ^                       ^   ^  ^                                                   ^
 ///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
 impl MessageEncrypter for Tls13GcmState {
-    fn encrypt(&self, msg: BorrowedPlainMessage, seq: u64) -> Result<OpaqueMessage, rustls::Error> {
+    fn encrypt(&mut self, msg: BorrowedPlainMessage, seq: u64) -> Result<OpaqueMessage, rustls::Error> {
         // Adding the size of the tag and encoding type to the capacity of payload vector.
         let total_len = msg.payload.len() + 1 + GCM_TAG_LENGTH;
         let mut payload = Vec::with_capacity(total_len);
@@ -277,8 +277,8 @@ impl MessageEncrypter for Tls13GcmState {
 ///       ^                       ^   ^  ^                                                   ^
 ///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
 impl MessageDecrypter for Tls13GcmState {
-    fn decrypt(&self, mut msg: OpaqueMessage, seq: u64) -> Result<PlainMessage, rustls::Error> {
-        let mut payload = msg.payload_mut();
+    fn decrypt<'a>(&mut self, msg: BorrowedOpaqueMessage<'a>, seq: u64) -> Result<BorrowedPlainMessage<'a>, rustls::Error> {
+        let mut payload = msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`]
         let payload_len = payload.len(); // This length includes the message, encoding, and tag.
 
         if payload_len < GCM_TAG_LENGTH {
