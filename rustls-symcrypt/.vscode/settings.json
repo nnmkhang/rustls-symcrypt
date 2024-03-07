@@ -1,0 +1,8 @@
+{
+    "vscode-nmake-tools.workspaceBuildDirectories": [
+        "."
+    ],
+    "rust-analyzer.linkedProjects": [
+        ".\\Cargo.toml"
+    ]
+}

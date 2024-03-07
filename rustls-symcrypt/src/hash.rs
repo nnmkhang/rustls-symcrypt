@@ -1,7 +1,7 @@
 //! Hash functions. For further documentation please refer to rust_symcrypt::hash
 //!
-use symcrypt::hash::{sha256, sha384, HashState, Sha256State, Sha384State};
 use rustls::crypto::hash::{Context, Hash, HashAlgorithm, Output};
+use symcrypt::hash::{sha256, sha384, HashState, Sha256State, Sha384State};
 
 /// ShaXXX is a struct that represents either a Sha256 or Sha384 hash Algorithm
 ///
@@ -65,6 +65,7 @@ impl Hash for Sha256 {
 impl Context for Sha256Context {
     fn fork_finish(&self) -> Output {
         let mut new_context = self.0.clone();
+
         Output::new(&new_context.result()[..])
     }
 

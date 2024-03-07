@@ -4,7 +4,7 @@ use rustls::crypto::{ActiveKeyExchange, GetRandomFailed, SharedSecret, Supported
 use rustls::{Error, NamedGroup};
 
 use symcrypt::ecdh::EcDh;
-use symcrypt::eckey;
+use symcrypt::eckey::CurveType;
 
 /// KxGroup is a struct that easily ties rustls::NamedGroup to the symcrypt_sys::ecurve::CurveType.
 ///
@@ -13,7 +13,7 @@ use symcrypt::eckey;
 #[derive(Debug)]
 pub struct KxGroup {
     name: NamedGroup,
-    curve_type: eckey::CurveType,
+    curve_type: CurveType,
 }
 
 /// KeyExchange is a struct that defines the state for EcDh operations
@@ -28,28 +28,33 @@ pub struct KxGroup {
 pub struct KeyExchange {
     state: EcDh,
     name: NamedGroup,
-    curve_type: eckey::CurveType,
+    curve_type: CurveType,
     pub_key: Vec<u8>,
 }
 
 /// All supported KeyExchange groups.
-pub const ALL_KX_GROUPS: &[&dyn SupportedKxGroup] = &[X25519, SECP256R1, SECP384R1];
+pub const ALL_KX_GROUPS: &[&dyn SupportedKxGroup] = &[
+    SECP256R1,
+    SECP384R1,
+    #[cfg(feature = "x25519")]
+    X25519,
+    ];
 
-/// Since the type trait size cannot be determined at compile time, we must use trait objects, hence the &dyn SupportedKxGroup
-/// annotation. Similarly, KxGroup must then also be taken as a reference.
+// Since the type trait size cannot be determined at compile time, we must use trait objects, hence the &dyn SupportedKxGroup
+// annotation. Similarly, KxGroup must then also be taken as a reference.
 pub const X25519: &dyn SupportedKxGroup = &KxGroup {
     name: NamedGroup::X25519,
-    curve_type: eckey::CurveType::Curve25519,
+    curve_type: CurveType::Curve25519,
 };
 
 pub const SECP256R1: &dyn SupportedKxGroup = &KxGroup {
-    name: NamedGroup::secp384r1,
-    curve_type: eckey::CurveType::NistP384,
+    name: NamedGroup::secp256r1,
+    curve_type: CurveType::NistP256,
 };
 
 pub const SECP384R1: &dyn SupportedKxGroup = &KxGroup {
     name: NamedGroup::secp384r1,
-    curve_type: eckey::CurveType::NistP256,
+    curve_type: CurveType::NistP384,
 };
 
 /// Impl for the trait SupportedKxGroup
@@ -60,9 +65,24 @@ pub const SECP384R1: &dyn SupportedKxGroup = &KxGroup {
 impl SupportedKxGroup for KxGroup {
     fn start(&self) -> Result<Box<(dyn ActiveKeyExchange)>, Error> {
         let ecdh_state = EcDh::new(self.curve_type).map_err(|_| GetRandomFailed)?;
-        let pub_key = ecdh_state
+        let mut pub_key = ecdh_state
             .get_public_key_bytes()
             .map_err(|_| GetRandomFailed)?;
+
+        if ecdh_state.get_curve() == CurveType::NistP256
+            || ecdh_state.get_curve() == CurveType::NistP384
+        {
+            // Based on RFC 8446 https://www.rfc-editor.org/rfc/rfc8446#section-4.2.8.2.
+            // struct {
+            //     uint8 legacy_form = 4;
+            //     opaque X[coordinate_length];
+            //     opaque Y[coordinate_length];
+            // } UncompressedPointRepresentation;
+
+            // Have to pre-append 0x04 to the first element of the vec since SymCrypt expects the caller to do so,
+            // and Rustls expects the crypto library to append the 0x04.
+            pub_key.insert(0, 0x04);
+        }
 
         Ok(Box::new(KeyExchange {
             state: ecdh_state,
@@ -88,7 +108,27 @@ impl SupportedKxGroup for KxGroup {
 /// `group()` will return the NamedGroup of the KeyExchange
 impl ActiveKeyExchange for KeyExchange {
     fn complete(self: Box<Self>, peer_pub_key: &[u8]) -> Result<SharedSecret, Error> {
-        let peer_ecdh = match EcDh::from_public_key_bytes(self.curve_type, peer_pub_key) {
+        let new_peer_pub_key = match self.curve_type {
+            CurveType::NistP256 | CurveType::NistP384 => {
+                // If curve type is NistP256 or NistP384, remove the first byte
+                // Based on RFC 8446 https://www.rfc-editor.org/rfc/rfc8446#section-4.2.8.2.
+                // struct {
+                //     uint8 legacy_form = 4;
+                //     opaque X[coordinate_length];
+                //     opaque Y[coordinate_length];
+                // } UncompressedPointRepresentation;
+
+                // Have to remove the legacy_form 0x04. Rustls does not do this for us, and Symcrypt
+                // only expects the X and Y coordinates.
+                &peer_pub_key[1..]
+            }
+            CurveType::Curve25519 => {
+                // Do not remove first byte for Curve22519
+                peer_pub_key
+            }
+        };
+
+        let peer_ecdh = match EcDh::from_public_key_bytes(self.curve_type, &new_peer_pub_key) {
             Ok(peer_ecdh) => peer_ecdh,
             Err(symcrypt_error) => {
                 let custom_error_message = format!(
@@ -109,7 +149,6 @@ impl ActiveKeyExchange for KeyExchange {
                 return Err(Error::General(custom_error_message));
             }
         };
-
         Ok(SharedSecret::from(secret_agreement.as_bytes()))
     }
 

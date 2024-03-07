@@ -1,18 +1,15 @@
 //! GCM and ChaCha functions for TLS 1.2. For further documentation please refer to rust_symcrypt::gcm and symcrypt::chacha
-
-use crate::tls13::AesGcm;
-use symcrypt::block_ciphers::BlockCipherType;
-use symcrypt::chacha::{
-    chacha20_poly1305_decrypt_in_place, chacha20_poly1305_encrypt_in_place,
-};
-use symcrypt::gcm::GcmExpandedKey;
+use crate::cipher_suites::AesGcm;
 use rustls::crypto::cipher::{
-    make_tls12_aad, AeadKey, BorrowedPlainMessage, Iv, KeyBlockShape, MessageDecrypter,
-    MessageEncrypter, Nonce, BorrowedOpaqueMessage, PlainMessage, OpaqueMessage, Tls12AeadAlgorithm,
+    make_tls12_aad, AeadKey, BorrowedOpaqueMessage, BorrowedPlainMessage, Iv, KeyBlockShape,
+    MessageDecrypter, MessageEncrypter, Nonce, OpaqueMessage, Tls12AeadAlgorithm,
     UnsupportedOperationError,
 };
-use rustls::ConnectionTrafficSecrets;
-use rustls::Error;
+use rustls::{Error, ConnectionTrafficSecrets};
+use symcrypt::block_ciphers::BlockCipherType;
+use symcrypt::chacha::{chacha20_poly1305_decrypt_in_place, chacha20_poly1305_encrypt_in_place};
+use symcrypt::gcm::GcmExpandedKey;
+
 
 const CHACHA_TAG_LENGTH: usize = 16;
 const CHAHCA_NONCE_LENGTH: usize = 12;
@@ -72,7 +69,7 @@ impl Tls12AeadAlgorithm for Tls12ChaCha {
         &self,
         key: AeadKey,
         iv: &[u8],
-        explicit: &[u8],
+        _explicit: &[u8],
     ) -> Result<ConnectionTrafficSecrets, UnsupportedOperationError> {
         debug_assert_eq!(CHAHCA_NONCE_LENGTH, iv.len()); // Nonce length must be 12 for ChaCha
         Ok(ConnectionTrafficSecrets::Chacha20Poly1305 {
@@ -112,11 +109,7 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
         ) {
             Ok(_) => {
                 payload.extend_from_slice(&tag); // Add tag to the end of the payload.
-                Ok(OpaqueMessage::new(
-                    msg.typ,
-                    msg.version,
-                    payload,
-                ))
+                Ok(OpaqueMessage::new(msg.typ, msg.version, payload))
             }
             Err(symcrypt_error) => {
                 let custom_error_message = format!(
@@ -140,8 +133,12 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
 ///       ^                        ^  ^                                                   ^
 ///      Message (N bytes)                              Tag (16 bytes)
 impl MessageDecrypter for Tls12ChaCha20Poly1305 {
-    fn decrypt<'a>(&mut self, mut msg: BorrowedOpaqueMessage<'a>, seq: u64) -> Result<BorrowedPlainMessage<'a>, Error> {
-        let payload = &msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`] 
+    fn decrypt<'a>(
+        &mut self,
+        mut msg: BorrowedOpaqueMessage<'a>,
+        seq: u64,
+    ) -> Result<BorrowedPlainMessage<'a>, Error> {
+        let payload = &mut msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`]
         let payload_len = payload.len(); // This length includes the message and the tag.
         if payload_len < CHACHA_TAG_LENGTH {
             return Err(Error::DecryptError);
@@ -182,7 +179,7 @@ impl MessageDecrypter for Tls12ChaCha20Poly1305 {
 ///
 /// [`algo_type`] represents either GCM128 or GCM256 which corresponds to a 16 and 32 byte key respectively.
 pub struct Tls12Gcm {
-    algo_type: AesGcm,
+    pub(crate) algo_type: AesGcm,
 }
 
 /// Gcm12Decrypt impls [`MessageDecrypter`]
@@ -257,6 +254,7 @@ impl Tls12AeadAlgorithm for Tls12Gcm {
                 key: key,
                 iv: Iv::new(gcm_iv),
             }),
+            _ => Err(UnsupportedOperationError),
         }
     }
 }
@@ -285,15 +283,13 @@ impl MessageEncrypter for Gcm12Encrypt {
         self.key.encrypt_in_place(
             &nonce.0,
             &auth_data,
-            &mut payload[GCM_EXPLICIT_NONCE_LENGTH..msg.payload.len()],
+            &mut payload
+                [GCM_EXPLICIT_NONCE_LENGTH..(msg.payload.len() + GCM_EXPLICIT_NONCE_LENGTH)],
+            // adding the gcm_explicit_nonce_length to account for shifting 8 bytes
             &mut tag,
         );
         payload.extend_from_slice(&tag);
-        Ok(OpaqueMessage::new(
-            msg.typ,
-            msg.version,
-            payload,
-        ))
+        Ok(OpaqueMessage::new(msg.typ, msg.version, payload))
     }
 
     fn encrypted_payload_len(&self, payload_len: usize) -> usize {
@@ -308,8 +304,12 @@ impl MessageEncrypter for Gcm12Encrypt {
 ///       ^                    ^  ^                        ^  ^                                                   ^
 ///       Explicit Iv (8 bytes)       Message (N bytes)                                  Tag (16 bytes)
 impl MessageDecrypter for Gcm12Decrypt {
-    fn decrypt<'a>(&mut self, mut msg: BorrowedOpaqueMessage<'a>, seq: u64) -> Result<BorrowedPlainMessage<'a>, Error> {
-        let payload = &msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`] 
+    fn decrypt<'a>(
+        &mut self,
+        mut msg: BorrowedOpaqueMessage<'a>,
+        seq: u64,
+    ) -> Result<BorrowedPlainMessage<'a>, Error> {
+        let payload = &mut msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`]
         let payload_len = payload.len(); // This length includes the explicit iv, message and tag
         if payload_len < GCM_TAG_LENGTH + GCM_EXPLICIT_NONCE_LENGTH {
             return Err(Error::DecryptError);
@@ -339,10 +339,14 @@ impl MessageDecrypter for Gcm12Decrypt {
             &tag,
         ) {
             Ok(()) => {
-                payload.truncate(payload_len - GCM_TAG_LENGTH); // Remove the tag
+                payload.copy_within(GCM_EXPLICIT_NONCE_LENGTH..(payload_len - GCM_TAG_LENGTH), 0);
+                // copy bytes from the [GCM_EXPLICIT_NONCE_LENTH..] to end of array, starting destination is 0 index.
+                // This overwrites the the first 8 bytes that were previously the explicit nonce.
 
-                // replace .dain with something else 
-                // payload.drain(..GCM_EXPLICIT_NONCE_LENGTH); // Remove explicit iv
+                payload.truncate(payload_len - (GCM_EXPLICIT_NONCE_LENGTH + GCM_TAG_LENGTH)); // remove the last 8 bytes since they are now garbage
+                                                                                              // This work around is needed because rustls encapuslates the payload ( which is just an array ) behind
+                                                                                              // a "BorrowedPayload" type, which only exposes truncate as a field, and hides many methods like new() pop() etc.
+
                 Ok(msg.into_plain_message())
             }
             Err(symcrypt_error) => {

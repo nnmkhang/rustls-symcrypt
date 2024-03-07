@@ -1,2 +1,3 @@
-/target
-.vscode/settings.json
+rustls/symcrypt/.vscode/settings.json
+rustls-symcrypt/target
+examples/target
