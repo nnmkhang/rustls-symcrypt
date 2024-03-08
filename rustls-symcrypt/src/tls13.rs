@@ -1,8 +1,8 @@
 //! GCM and ChaCha functions for TLS 1.3. For further documentation please refer to rust_symcrypt::gcm and symcrypt::chacha
 
 use rustls::crypto::cipher::{
-    make_tls13_aad, AeadKey, BorrowedOpaqueMessage, BorrowedPlainMessage, Iv, MessageDecrypter,
-    MessageEncrypter, Nonce, OpaqueMessage, Tls13AeadAlgorithm, UnsupportedOperationError,
+    make_tls13_aad, AeadKey, PrefixedPayload, OutboundOpaqueMessage, OutboundPlainMessage, Iv, MessageDecrypter,
+    MessageEncrypter, Nonce, InboundOpaqueMessage, InboundPlainMessage,  Tls13AeadAlgorithm, UnsupportedOperationError,
 };
 use rustls::ConnectionTrafficSecrets;
 use symcrypt::block_ciphers::BlockCipherType;
@@ -65,45 +65,49 @@ impl Tls13AeadAlgorithm for Tls13ChaCha {
 }
 
 /// [`MessageEncrypter`] for ChaCha 1.3
-/// the [`payload`] field that comes from the [`BorrowedPlainMessage`] is structured to include the message which is an arbitrary length,
+/// the `payload` field that comes from the [`OutboundPlainMessage`] is structured to include the message which is an arbitrary length,
 /// an encoding type that is 1 byte and then finally the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                       ^   ^  ^                                                   ^
-///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
+///            Message (N bytes)   Encoding (1 byte)              Tag (16 bytes)
 impl MessageEncrypter for Tls13ChaCha20Poly1305 {
     fn encrypt(
         &mut self,
-        msg: BorrowedPlainMessage,
+        msg: OutboundPlainMessage,
         seq: u64,
-    ) -> Result<OpaqueMessage, rustls::Error> {
+    ) -> Result<OutboundOpaqueMessage, rustls::Error> {
         // Adding the size of message, the tag and encoding type to the capacity of payload vector.
-        let total_len = msg.payload.len() + 1 + CHACHA_TAG_LENGTH;
-        let mut payload = Vec::with_capacity(total_len);
+        // Must create the payload this way. There is a header of 5 bytes at the front of the payload.
+        // Using overridden with_capacity() will return a new payload with the header of 5 bytes set to 0 and accounted for.
+        let total_len = self.encrypted_payload_len(msg.payload.len());  
+        let mut payload = PrefixedPayload::with_capacity(total_len);
 
-        // Construct payload.
-        payload.extend_from_slice(msg.payload);
-        payload.push(msg.typ.get_u8());
+        // payload will be appended do via extend_from_chunks() and extend_from_slice() starting after the 5 byte buffer.
+        payload.extend_from_chunks(&msg.payload);
+        payload.extend_from_slice(&msg.typ.to_array());
 
-        // Set up needed parameters for ChaCha encrypt.
+        // Set up needed parameters for ChaCha encrypt, Must use total length of message, not including the length of 
+        // the 5 byte header, since that is not included in the message to be encrypted.
         let nonce = Nonce::new(&self.iv, seq);
         let auth_data = make_tls13_aad(total_len);
         let mut tag = [0u8; CHACHA_TAG_LENGTH];
 
         // Encrypting the payload in place. +1 is added to account for encoding type that must also be encrypted.
+        // payload.as_mut() returns the slice that is indexed by 5 bytes to avoid encrypting the header. 
         match chacha20_poly1305_encrypt_in_place(
             &self.key,
             &nonce.0,
             &auth_data,
-            &mut payload[..msg.payload.len() + 1],
+            &mut payload.as_mut()[..msg.payload.len() + 1],
             &mut tag,
         ) {
             Ok(_) => {
                 payload.extend_from_slice(&tag); // Add tag to the end of the payload.
-                Ok(OpaqueMessage::new(
+                Ok(OutboundOpaqueMessage::new(
                     // Note: all TLS 1.3 application data records use TLSv1_2 (0x0303) as the legacy record
                     // protocol version, see https://www.rfc-editor.org/rfc/rfc8446#section-5.1
                     rustls::ContentType::ApplicationData,
-                    rustls::ProtocolVersion::TLSv1_2, // !TODO: ask rustls why they have 1_2 rather than 1_3 here.
+                    rustls::ProtocolVersion::TLSv1_2,
                     payload,
                 ))
             }
@@ -123,17 +127,17 @@ impl MessageEncrypter for Tls13ChaCha20Poly1305 {
 }
 
 /// [`MessageDecrypter`] for ChaCha 1.3
-/// the [`payload`] field that comes from the [`OpaqueMessage`] is structured to include the message which is an arbitrary length,
+/// the `payload` field that comes from the [`InboundOpaqueMessage`] is structured to include the message which is an arbitrary length,
 /// an encoding type that is 1 byte and then finally the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                       ^   ^  ^                                                   ^
-///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
+///            Message (N bytes)   Encoding (1 byte)              Tag (16 bytes)
 impl MessageDecrypter for Tls13ChaCha20Poly1305 {
     fn decrypt<'a>(
         &mut self,
-        mut msg: BorrowedOpaqueMessage<'a>,
+        mut msg: InboundOpaqueMessage<'a>,
         seq: u64,
-    ) -> Result<BorrowedPlainMessage<'a>, rustls::Error> {
+    ) -> Result<InboundPlainMessage<'a>, rustls::Error> {
         let payload = &mut msg.payload; // This is mutable since it is a reference of BorrowedPayload
         let payload_len = payload.len(); // This length includes the message, encoding, and tag.
 
@@ -147,7 +151,7 @@ impl MessageDecrypter for Tls13ChaCha20Poly1305 {
         let nonce = Nonce::new(&self.iv, seq);
         let auth_data = make_tls13_aad(payload_len); // The total message including tag and encoding byte must be used for auth data.
         let mut tag = [0u8; GCM_TAG_LENGTH];
-        tag.copy_from_slice(&payload[message_length..]);
+        tag.copy_from_slice(&payload[message_length..]); // get all bytes not including the tag
 
         // Decrypting the payload in place, there is no +1 here since [`message_length`] accounts for the extra byte for encoding type.
         match chacha20_poly1305_decrypt_in_place(
@@ -225,40 +229,44 @@ impl Tls13AeadAlgorithm for Tls13Gcm {
 }
 
 /// [`MessageEncrypter`] for GCM 1.3
-/// the [`payload`] field that comes from the [`BorrowedPlainMessage`] is structured to include the message which is an arbitrary length,
+/// the `payload` field that comes from the [`OutboundPlainMessage`] is structured to include the message which is an arbitrary length,
 /// an encoding type that is 1 byte and then finally the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                       ^   ^  ^                                                   ^
-///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
+///            Message (N bytes)   Encoding (1 byte)              Tag (16 bytes)
 impl MessageEncrypter for Tls13GcmState {
     fn encrypt(
         &mut self,
-        msg: BorrowedPlainMessage,
+        msg: OutboundPlainMessage,
         seq: u64,
-    ) -> Result<OpaqueMessage, rustls::Error> {
-        // Adding the size of the tag and encoding type to the capacity of payload vector.
-        let total_len = msg.payload.len() + 1 + GCM_TAG_LENGTH;
-        let mut payload = Vec::with_capacity(total_len);
+    ) -> Result<OutboundOpaqueMessage, rustls::Error> {
+        // Adding the size of message, the tag and encoding type to the capacity of payload vector.
+        // Must create the payload this way. There is a header of 5 bytes at the front of the payload.
+        // Using overridden with_capacity() will return a new payload with the header of 5 bytes set to 0 and accounted for.
+        let total_len = self.encrypted_payload_len(msg.payload.len());  
+        let mut payload = PrefixedPayload::with_capacity(total_len);
 
-        // Construct payload
-        payload.extend_from_slice(msg.payload);
-        payload.push(msg.typ.get_u8());
+        // payload will be appended do via extend_from_chunks() and extend_from_slice() starting after the 5 byte buffer.
+        payload.extend_from_chunks(&msg.payload);
+        payload.extend_from_slice(&msg.typ.to_array());
 
-        // Set up needed parameters for Gcm Encrypt
-        let mut tag = [0u8; GCM_TAG_LENGTH];
+        // Set up needed parameters for ChaCha encrypt, Must use total length of message, not including the length of 
+        // the 5 byte header, since that is not included in the message to be encrypted.
         let nonce = Nonce::new(&self.iv, seq);
         let auth_data = make_tls13_aad(total_len);
+        let mut tag = [0u8; GCM_TAG_LENGTH];
 
-        // Encrypting the payload in place, +1 is added to account for the encoding type. This call cannot fail.
+        // Encrypting the payload in place. +1 is added to account for encoding type that must also be encrypted.
+        // payload.as_mut() returns the slice that is indexed by 5 bytes to avoid encrypting the header. This call cannot fail.
         self.key.encrypt_in_place(
             &nonce.0,
             &auth_data,
-            &mut payload[..msg.payload.len() + 1],
+            &mut payload.as_mut()[..msg.payload.len() + 1],
             &mut tag,
         );
 
         payload.extend_from_slice(&tag);
-        Ok(OpaqueMessage::new(
+        Ok(OutboundOpaqueMessage::new(
             // Note: all TLS 1.3 application data records use TLSv1_2 (0x0303) as the legacy record
             // protocol version, see https://www.rfc-editor.org/rfc/rfc8446#section-5.1
             rustls::ContentType::ApplicationData,
@@ -273,17 +281,17 @@ impl MessageEncrypter for Tls13GcmState {
 }
 
 /// [`MessageDecrypter`] for GCM 1.3
-/// the [`payload`] field that comes from the [`OpaqueMessage`] is structured to include the message which is an arbitrary length,
+/// the `payload` field that comes from the [`InboundOpaqueMessage`] is structured to include the message which is an arbitrary length,
 /// an encoding type that is 1 byte. After the encoding byte there can be a padding of 0 or more zero bytes, and finally the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                       ^   ^  ^                                                   ^
-///            Message (N bytes)   Encoding (1 Byte)              Tag (16 bytes)
+///            Message (N bytes)   Encoding (1 byte)              Tag (16 bytes)
 impl MessageDecrypter for Tls13GcmState {
     fn decrypt<'a>(
         &mut self,
-        mut msg: BorrowedOpaqueMessage<'a>,
+        mut msg: InboundOpaqueMessage<'a>,
         seq: u64,
-    ) -> Result<BorrowedPlainMessage<'a>, rustls::Error> {
+    ) -> Result<InboundPlainMessage<'a>, rustls::Error> {
         let payload = &mut msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`]
         let payload_len = payload.len(); // This length includes the message, encoding, and tag.
         if payload_len < GCM_TAG_LENGTH {
@@ -295,7 +303,7 @@ impl MessageDecrypter for Tls13GcmState {
         let nonce = Nonce::new(&self.iv, seq);
         let auth_data = make_tls13_aad(payload_len); // The whole message, including encoding type and tag should be used.
         let mut tag = [0u8; GCM_TAG_LENGTH];
-        tag.copy_from_slice(&payload[payload_len - GCM_TAG_LENGTH..]);
+        tag.copy_from_slice(&payload[message_length..]); // get all bytes not including the tag
 
         // Decrypting the payload in place, there is no +1 here since [`message_length`] accounts for the extra byte for encoding type.
         match self

@@ -1,8 +1,8 @@
 //! GCM and ChaCha functions for TLS 1.2. For further documentation please refer to rust_symcrypt::gcm and symcrypt::chacha
 use crate::cipher_suites::AesGcm;
 use rustls::crypto::cipher::{
-    make_tls12_aad, AeadKey, BorrowedOpaqueMessage, BorrowedPlainMessage, Iv, KeyBlockShape,
-    MessageDecrypter, MessageEncrypter, Nonce, OpaqueMessage, Tls12AeadAlgorithm,
+    make_tls12_aad, AeadKey, OutboundOpaqueMessage, OutboundPlainMessage, Iv, KeyBlockShape,
+    MessageDecrypter, MessageEncrypter, Nonce, PrefixedPayload, InboundPlainMessage, InboundOpaqueMessage, Tls12AeadAlgorithm,
     UnsupportedOperationError,
 };
 use rustls::{Error, ConnectionTrafficSecrets};
@@ -80,19 +80,21 @@ impl Tls12AeadAlgorithm for Tls12ChaCha {
 }
 
 /// [`MessageEncrypter`] for ChaCha 1.2
-/// the [`payload`] field that comes from the [`BorrowedPlainMessage`] is structured to include the message which is an arbitrary length,
+/// the `payload` field that comes from the [`OutboundPlainMessage`] is structured to include the message which is an arbitrary length,
 /// and  the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                        ^  ^                                                   ^
 ///      Message (N bytes)                              Tag (16 bytes)
 impl MessageEncrypter for Tls12ChaCha20Poly1305 {
-    fn encrypt(&mut self, msg: BorrowedPlainMessage, seq: u64) -> Result<OpaqueMessage, Error> {
-        // Adding the size of the the message and tag to the payload vector.
-        let total_len = msg.payload.len() + CHACHA_TAG_LENGTH;
+    fn encrypt(&mut self, msg: OutboundPlainMessage, seq: u64) -> Result<OutboundOpaqueMessage, Error> {
+        // Adding the size of message, the tag and encoding type to the capacity of payload vector.
+        // Must create the payload this way. There is a header of 5 bytes at the front of the payload.
+        // Using overridden with_capacity() will return a new payload with the header of 5 bytes set to 0 and accounted for.
+        let total_len = self.encrypted_payload_len(msg.payload.len());  
+        let mut payload = PrefixedPayload::with_capacity(total_len);
 
-        // Construct payload.
-        let mut payload = Vec::with_capacity(total_len);
-        payload.extend_from_slice(msg.payload);
+        // payload will be appended do via extend_from_chunks() starting after the 5 byte buffer.
+        payload.extend_from_chunks(&msg.payload);
 
         // Set up needed parameters for ChaCha encrypt.
         let mut tag = [0u8; CHACHA_TAG_LENGTH];
@@ -100,16 +102,17 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
         let auth_data = make_tls12_aad(seq, msg.typ, msg.version, msg.payload.len());
 
         // ChaCha Encrypt in place, only the message from the payload will be encrypted.
+                // payload.as_mut() returns the slice that is indexed by 5 bytes to avoid encrypting the header. 
         match chacha20_poly1305_encrypt_in_place(
             &self.key,
             &nonce.0,
             &auth_data,
-            &mut payload[..msg.payload.len()],
+            &mut payload.as_mut()[..msg.payload.len()],
             &mut tag,
         ) {
             Ok(_) => {
                 payload.extend_from_slice(&tag); // Add tag to the end of the payload.
-                Ok(OpaqueMessage::new(msg.typ, msg.version, payload))
+                Ok(OutboundOpaqueMessage::new(msg.typ, msg.version, payload))
             }
             Err(symcrypt_error) => {
                 let custom_error_message = format!(
@@ -127,7 +130,7 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
 }
 
 /// [`MessageDecrypter`] for ChaCha 1.2
-/// the [`payload`] field that comes from the [`BorrowedOpaqueMessage`] is structured to include the message which is an arbitrary length,
+/// the `payload` field that comes from the [`InboundOpaqueMessage`] is structured to include the message which is an arbitrary length,
 /// and  the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                        ^  ^                                                   ^
@@ -135,9 +138,9 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
 impl MessageDecrypter for Tls12ChaCha20Poly1305 {
     fn decrypt<'a>(
         &mut self,
-        mut msg: BorrowedOpaqueMessage<'a>,
+        mut msg: InboundOpaqueMessage<'a>,
         seq: u64,
-    ) -> Result<BorrowedPlainMessage<'a>, Error> {
+    ) -> Result<InboundPlainMessage<'a>, Error> {
         let payload = &mut msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`]
         let payload_len = payload.len(); // This length includes the message and the tag.
         if payload_len < CHACHA_TAG_LENGTH {
@@ -149,7 +152,7 @@ impl MessageDecrypter for Tls12ChaCha20Poly1305 {
         let nonce = Nonce::new(&self.iv, seq);
         let auth_data = make_tls12_aad(seq, msg.typ, msg.version, message_len);
         let mut tag = [0u8; CHACHA_TAG_LENGTH];
-        tag.copy_from_slice(&payload[message_len..]);
+        tag.copy_from_slice(&payload[message_len..]); // get all bytes not including the tag
 
         // Decrypting the payload in place, only the message from the payload will be decrypted.
         match chacha20_poly1305_decrypt_in_place(
@@ -260,20 +263,24 @@ impl Tls12AeadAlgorithm for Tls12Gcm {
 }
 
 /// [`MessageEncrypter`] for  Gcm 1.2
-/// the [`payload`] field that comes from the [`BorrowedPlainMessage`] is structured to include the explicit iv which is 8 bytes,
+/// the `payload` field that comes from the [`OutboundPlainMessage`] is structured to include the explicit iv which is 8 bytes,
 /// the message which is an arbitrary length, and  the tag which is 16 bytes.
 /// ex : [1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                    ^  ^                        ^  ^                                                   ^
 ///       Explicit Iv (8 bytes)       Message (N bytes)                                  Tag (16 bytes)
 impl MessageEncrypter for Gcm12Encrypt {
-    fn encrypt(&mut self, msg: BorrowedPlainMessage, seq: u64) -> Result<OpaqueMessage, Error> {
-        let total_len = msg.payload.len() + GCM_TAG_LENGTH + GCM_EXPLICIT_NONCE_LENGTH; // Includes message, tag and explicit iv
+    fn encrypt(&mut self, msg: OutboundPlainMessage, seq: u64) -> Result<OutboundOpaqueMessage, Error> {
+        // Adding the size of message, the tag and encoding type to the capacity of payload vector.
+        // Must create the payload this way. There is a header of 5 bytes at the front of the payload.
+        // Using overridden with_capacity() will return a new payload with the header of 5 bytes set to 0 and accounted for.
+        let total_len = self.encrypted_payload_len(msg.payload.len());  
+        let mut payload = PrefixedPayload::with_capacity(total_len);
 
+        
         // Construct the payload
         let nonce = Nonce::new(&Iv::copy(&self.full_iv), seq);
-        let mut payload = Vec::with_capacity(total_len);
         payload.extend_from_slice(&nonce.0[GCM_IMPLICIT_NONCE_LENGTH..]);
-        payload.extend_from_slice(msg.payload);
+        payload.extend_from_chunks(&msg.payload);
 
         let mut tag = [0u8; GCM_TAG_LENGTH];
         let auth_data = make_tls12_aad(seq, msg.typ, msg.version, msg.payload.len());
@@ -283,13 +290,13 @@ impl MessageEncrypter for Gcm12Encrypt {
         self.key.encrypt_in_place(
             &nonce.0,
             &auth_data,
-            &mut payload
+            &mut payload.as_mut()
                 [GCM_EXPLICIT_NONCE_LENGTH..(msg.payload.len() + GCM_EXPLICIT_NONCE_LENGTH)],
             // adding the gcm_explicit_nonce_length to account for shifting 8 bytes
             &mut tag,
         );
         payload.extend_from_slice(&tag);
-        Ok(OpaqueMessage::new(msg.typ, msg.version, payload))
+        Ok(OutboundOpaqueMessage::new(msg.typ, msg.version, payload))
     }
 
     fn encrypted_payload_len(&self, payload_len: usize) -> usize {
@@ -298,7 +305,7 @@ impl MessageEncrypter for Gcm12Encrypt {
 }
 
 /// [`MessageDecrypter`] for  Gcm 1.2
-/// the [`payload`] field that comes from the [`OpaqueMessage`] is structured to include the explicit iv which is 8 bytes,
+/// the `payload` field that comes from the [`InboundOpaqueMessage`] is structured to include the explicit iv which is 8 bytes,
 /// the message which is an arbitrary length, and  the tag which is 16 bytes.
 /// ex : [1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                    ^  ^                        ^  ^                                                   ^
@@ -306,9 +313,9 @@ impl MessageEncrypter for Gcm12Encrypt {
 impl MessageDecrypter for Gcm12Decrypt {
     fn decrypt<'a>(
         &mut self,
-        mut msg: BorrowedOpaqueMessage<'a>,
+        mut msg: InboundOpaqueMessage<'a>,
         seq: u64,
-    ) -> Result<BorrowedPlainMessage<'a>, Error> {
+    ) -> Result<InboundPlainMessage<'a>, Error> {
         let payload = &mut msg.payload; // payload is already mutable since it is a reference to [`BorrowedPayload`]
         let payload_len = payload.len(); // This length includes the explicit iv, message and tag
         if payload_len < GCM_TAG_LENGTH + GCM_EXPLICIT_NONCE_LENGTH {
@@ -344,7 +351,7 @@ impl MessageDecrypter for Gcm12Decrypt {
                 // This overwrites the the first 8 bytes that were previously the explicit nonce.
 
                 payload.truncate(payload_len - (GCM_EXPLICIT_NONCE_LENGTH + GCM_TAG_LENGTH)); // remove the last 8 bytes since they are now garbage
-                                                                                              // This work around is needed because rustls encapuslates the payload ( which is just an array ) behind
+                                                                                              // This work around is needed because rustls wraps the payload ( which is just an array ) behind
                                                                                               // a "BorrowedPayload" type, which only exposes truncate as a field, and hides many methods like new() pop() etc.
 
                 Ok(msg.into_plain_message())

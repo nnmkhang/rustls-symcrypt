@@ -10,7 +10,7 @@ use std::thread;
 use rustls_pemfile;
 use rustls::crypto::SupportedKxGroup;
 use rustls::{
-    CipherSuite, crypto::ring::default_provider, server::Acceptor, SupportedCipherSuite,
+    CipherSuite, crypto::ring::default_provider, server::Accepted, SupportedCipherSuite,
     ServerConfig,
 };
 use rustls_symcrypt::{

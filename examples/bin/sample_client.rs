@@ -24,30 +24,30 @@ use structopt::StructOpt;
 
 // openssl s_server -accept 4443 -cert localhost.crt  -key localhost.key -debug
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "sample client", about = "A simple tls client using rustls and SymCrypt as a provider")]
-struct Opt {
+// #[derive(Debug, StructOpt)]
+// #[structopt(name = "sample client", about = "A simple tls client using rustls and SymCrypt as a provider")]
+// struct Opt {
 
-    #[structopt(long)]
-    key: String,
+//     #[structopt(long)]
+//     key: String,
 
-    #[structopt(long)]
-    cert: PathBuf,
+//     #[structopt(long)]
+//     cert: PathBuf,
 
-}
+// }
 
 
 fn main() {
 
-    let opt = Opt::from_args();
+    // let opt = Opt::from_args();
 
-    println!("{:?}", opt.cert);
+    // println!("{:?}", opt.cert);
 
 
 
 
     env_logger::init();
-    env::set_var("SSLKEYLOGFILE", "./sslkeylogfile.txt");
+    //env::set_var("SSLKEYLOGFILE", "./sslkeylogfile.txt");
 
     println!("The feature flags enabled are: ");
 

@@ -8,7 +8,8 @@ publish = false
 
 [dependencies]
 rustls-symcrypt = {path = "../rustls-symcrypt"}
-rustls = {path ="../../rustls/rustls", features = ["ring", "logging", "tls12"]}
+#rustls = {path ="../../rustls/rustls", features = ["ring", "logging", "tls12"]}
+rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }
 webpki-roots = "0.26"
 webpki = {package = "rustls-webpki", version = "0.102", features = ["alloc"], default-features = false}
 rcgen = { version = "0.12", features = ["ring"] }
@@ -36,8 +37,8 @@ internet = []
 #default-features = []
 
 default = [ 
-    #"rust-symcrypt",
-    "ring",
+    "rust-symcrypt",
+    #"ring",
     #"localhost",
     "internet",
     ]

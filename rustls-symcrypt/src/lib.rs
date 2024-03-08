@@ -141,14 +141,9 @@ mod tls13;
 mod cipher_suites;
 mod signer;
 
-// current working commit: 95067cb3 -> FEB 9TH. have to find the equivalent crate version to tie off our code to.
-
 // TODO:
 // Add comments to the code / clean up code ( unused imports, etc. )
 // test on linux 
-// add code coverage test !!
-// get rustls working on: rustls = "0.23.1"
-
 
 /// Exporting supported cipher suites for TLS 1.2
 pub use cipher_suites::{

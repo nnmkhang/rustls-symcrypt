@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 #rustls = { git = "https://github.com/rustls/rustls.git" }
-rustls = { path = "../../rustls/rustls", features = ["ring","logging", "tls12"] }
-#rustls = { version = "0.22.2", features = ["ring", "tls12"], default-features = false }
+#rustls = { path = "../../rustls/rustls", features = ["ring","logging", "tls12"] }
+rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }
 # Disable aws_ls_rc since it is not needed and increases build time.
 # uses '../../rust-symcrypt/rust-symcrypt/' when compiled locally, and uses
 # version 0.1.0 from crates.io when published
