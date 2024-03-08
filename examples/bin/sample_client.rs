@@ -22,6 +22,14 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+
+static TEST_CERT_PATH: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(|| {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("bin");
+    path.push("certs");
+    path
+});
+
 // openssl s_server -accept 4443 -cert localhost.crt  -key localhost.key -debug
 
 // #[derive(Debug, StructOpt)]
@@ -71,9 +79,11 @@ fn main() {
     };
 
     //let mut root_store = RootCertStore::empty();
+    let cert_path = TEST_CERT_PATH.join("RootCA.pem").into_os_string().into_string().unwrap();
+
 
     let certs = rustls_pemfile::certs(&mut BufReader::new(
-        &mut File::open("C:\\Code\\blah\\RootCA.pem").unwrap(),
+        &mut File::open(cert_path).unwrap(),
     ))
     .collect::<Result<Vec<_>, _>>()
     .unwrap();

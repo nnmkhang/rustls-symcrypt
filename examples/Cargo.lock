@@ -603,6 +603,7 @@ dependencies = [
  "cmake",
  "env_logger",
  "log",
+ "once_cell",
  "rcgen",
  "rustls",
  "rustls-pemfile",
