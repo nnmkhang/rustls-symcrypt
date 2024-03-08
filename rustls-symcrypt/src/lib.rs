@@ -290,7 +290,7 @@ struct SymCrypt;
 
 impl SecureRandom for SymCrypt {
     fn fill(&self, buf: &mut [u8]) -> Result<(), GetRandomFailed> {
-        symcrypt_random(buf);
+        // symcrypt_random(buf);
         Ok(())
     }
 }
