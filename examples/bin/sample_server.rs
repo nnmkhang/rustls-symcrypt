@@ -9,6 +9,16 @@ use rustls_symcrypt::default_symcrypt_provider;
 
 use std::fs::File;
 use std::io::BufReader;
+use std::path::PathBuf;
+
+static TEST_CERT_PATH: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(|| {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("bin");
+    path.push("certs");
+    path
+});
+
+
 
 fn main() {
     println!("The feature flags enabled are:");
@@ -20,23 +30,18 @@ fn main() {
     println!("Using ring as the provider");
 
     // openssl s_server -accept 4443 -cert localhost.crt  -key localhost.key -debug
+    let cert_path = TEST_CERT_PATH.join("localhost.pem").into_os_string().into_string().unwrap();
+    let key_path = TEST_CERT_PATH.join("localhost.key").into_os_string().into_string().unwrap();
 
-    let key_file_path = "C:\\Code\\blah2\\certs\\localhost.key"; // Define the path to the key file
-
-    let cert_path = "C:\\Code\\blah2\\certs\\localhost.pem";
     let certs = rustls_pemfile::certs(&mut BufReader::new(&mut File::open(cert_path).unwrap()))
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
 
     let private_key =
-        rustls_pemfile::private_key(&mut BufReader::new(&mut File::open(key_file_path).unwrap()))
+        rustls_pemfile::private_key(&mut BufReader::new(&mut File::open(key_path).unwrap()))
             .unwrap()
             .unwrap();
 
-    println!(
-        "Starting server on port 4443 with cert: {:?} and key: {:?}",
-        cert_path, key_file_path
-    );
 
     #[cfg(feature = "ring")]
     let mut server_config = ServerConfig::builder_with_provider(Arc::new(default_provider()))
@@ -89,8 +94,8 @@ fn main() {
                 conn.write_tls(&mut stream).unwrap();
                 conn.complete_io(&mut stream).unwrap();
             }
-            Err(e) => {
-                eprintln!("{}", e);
+            Err(_) => {
+                // error here
             }
         }
     }
