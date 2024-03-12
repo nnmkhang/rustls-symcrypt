@@ -1,5 +1,4 @@
 //! Hmac functions. For further documentation please refer to rust_symcrypt::hmac
-
 use rustls::crypto::hmac::{Hmac, Key, Tag};
 use symcrypt::hmac::{HmacSha256State, HmacSha384State, HmacState};
 
@@ -12,22 +11,22 @@ use symcrypt::hmac::{HmacSha256State, HmacSha384State, HmacState};
 ///
 /// Impl's for the Hash trait for both HmacSha256 and HmacSha384 implement the Ruslts traits for hashing
 ///
-/// [`with_key()`] creates a new Box<>'d HmacShaXXXState via its wrapper HmacShaXXXKey. This state is needed in order to
+/// `with_key()` creates a new `Box<>'d` HmacShaXXXState via its wrapper HmacShaXXXKey. This state is needed in order to
 /// run stateful operations.
 ///
-/// [`hash_output_len()`] returns the hash output length based on the hash algorithm.
+/// `hash_output_len()` returns the hash output length based on the hash algorithm.
 ///
 ///
 ///
 /// Impl's for the Key trait for both HmacSha256Key and HmacSha384Key implement the Rustls trait for
 /// Key which is called state on the SymCrypt side.
 ///
-/// [`sign()`] returns a tag based on the data that is passed in.
+/// `sign()` returns a tag based on the data that is passed in.
 ///
-/// [`sign_concat()`] returns a tag based on the set of first, middle and last data that is passed in.
+/// `sign_concat()` returns a tag based on the set of first, middle and last data that is passed in.
 /// The passed data will be appended sequentially to the HmacShaXXXState.
 ///
-/// [`tag_len()`] returns the tag length associated wit Hmac algorithm.
+/// `tag_len()` returns the tag length associated wit Hmac algorithm.
 
 /// Structs related to HmacSha256
 pub struct HmacSha256;
@@ -40,7 +39,8 @@ pub struct HmacSha384Key(HmacSha384State);
 /// Impl's related to HmacSha256
 impl Hmac for HmacSha256 {
     fn with_key(&self, key: &[u8]) -> Box<dyn Key> {
-        Box::new(HmacSha256Key(HmacSha256State::new(key).unwrap())) // unwrap here since rustls::hmac does not accept errors.
+        // unwrap here since rustls::hmac does not accept errors.
+        Box::new(HmacSha256Key(HmacSha256State::new(key).unwrap()))
     }
 
     fn hash_output_len(&self) -> usize {
@@ -73,7 +73,8 @@ impl Key for HmacSha256Key {
 /// Impl's related to HmacSha384
 impl Hmac for HmacSha384 {
     fn with_key(&self, key: &[u8]) -> Box<dyn Key> {
-        Box::new(HmacSha384Key(HmacSha384State::new(key).unwrap())) // unwrap here since rustls::Hmac does not accept errors.
+        // unwrap here since rustls::Hmac does not accept errors.
+        Box::new(HmacSha384Key(HmacSha384State::new(key).unwrap()))
     }
 
     fn hash_output_len(&self) -> usize {

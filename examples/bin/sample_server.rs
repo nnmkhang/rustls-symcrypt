@@ -4,8 +4,9 @@ use std::sync::Arc;
 use rustls::server::Acceptor;
 use rustls::ServerConfig;
 
-use rustls::crypto::ring::default_provider;
-use rustls_symcrypt::default_symcrypt_provider;
+use rustls_symcrypt::{
+    custom_symcrypt_provider, SECP256R1, TLS13_AES_128_GCM_SHA256, TLS13_AES_256_GCM_SHA384,
+};
 
 use std::fs::File;
 use std::io::BufReader;
@@ -18,20 +19,26 @@ static TEST_CERT_PATH: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::n
     path
 });
 
-
-
+/// Usage
+/// This program provides a simple localhost server using rustls-symcrypt.
+/// It uses the provided localhost.pem and localhost.key to set up the server config.
+/// To run this program you can use the following command in your terminal:
+/// cargo run --bin sample_server
 fn main() {
-    println!("The feature flags enabled are:");
+    // This code is similar to running the following command in openssl.
+    // openssl s_server -accept 4444 -cert localhost.crt  -key localhost.key -debug
 
-    #[cfg(feature = "rust-symcrypt")]
-    println!("Using rust-symcrypt as the provider");
-
-    #[cfg(feature = "ring")]
-    println!("Using ring as the provider");
-
-    // openssl s_server -accept 4443 -cert localhost.crt  -key localhost.key -debug
-    let cert_path = TEST_CERT_PATH.join("localhost.pem").into_os_string().into_string().unwrap();
-    let key_path = TEST_CERT_PATH.join("localhost.key").into_os_string().into_string().unwrap();
+    // Get file path and parse cert and key
+    let cert_path = TEST_CERT_PATH
+        .join("localhost.pem")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+    let key_path = TEST_CERT_PATH
+        .join("localhost.key")
+        .into_os_string()
+        .into_string()
+        .unwrap();
 
     let certs = rustls_pemfile::certs(&mut BufReader::new(&mut File::open(cert_path).unwrap()))
         .collect::<Result<Vec<_>, _>>()
@@ -42,27 +49,27 @@ fn main() {
             .unwrap()
             .unwrap();
 
+    // Set what cipher suites are going to be accepted by the server.
+    let cipher_suites = vec![TLS13_AES_128_GCM_SHA256, TLS13_AES_256_GCM_SHA384];
+    let kx_group = vec![SECP256R1];
 
-    #[cfg(feature = "ring")]
-    let mut server_config = ServerConfig::builder_with_provider(Arc::new(default_provider()))
-        .with_safe_default_protocol_versions()
-        .unwrap()
-        .with_no_client_auth()
-        .with_single_cert(certs, private_key)
-        .unwrap();
+    // Set up custom server config.
+    let server_config = ServerConfig::builder_with_provider(Arc::new(custom_symcrypt_provider(
+        Some(cipher_suites),
+        Some(kx_group),
+    )))
+    .with_safe_default_protocol_versions()
+    .unwrap()
+    .with_no_client_auth()
+    .with_single_cert(certs, private_key)
+    .unwrap();
 
-    #[cfg(feature = "rust-symcrypt")]
-    let mut server_config = ServerConfig::builder_with_provider(Arc::new(default_symcrypt_provider()))
-        .with_safe_default_protocol_versions()
-        .unwrap()
-        .with_no_client_auth()
-        .with_single_cert(certs, private_key)
-        .unwrap();
-
-    server_config.key_log = Arc::new(rustls::KeyLogFile::new());
     let server_config = Arc::new(server_config);
+    let listener = std::net::TcpListener::bind(format!("[::]:{}", 4444)).unwrap();
 
-    let listener = std::net::TcpListener::bind(format!("[::]:{}", 4443)).unwrap();
+    println!("Staring server with custom_symcrypt_provider()");
+
+    // Handle incomming connections
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
         let mut acceptor = Acceptor::default();
@@ -76,6 +83,8 @@ fn main() {
 
         match accepted.into_connection(server_config.clone()) {
             Ok(mut conn) => {
+                println!("Connection established");
+
                 let msg = concat!(
                     "HTTP/1.1 200 OK\r\n",
                     "Connection: Closed\r\n",

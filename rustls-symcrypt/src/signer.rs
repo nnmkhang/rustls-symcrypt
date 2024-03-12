@@ -1,6 +1,6 @@
 //! Implementation of `KeyProvider` for rustls-symcrypt
-use rustls::crypto::KeyProvider;
 use rustls::crypto::ring::sign;
+use rustls::crypto::KeyProvider;
 use rustls::pki_types::PrivateKeyDer;
 use rustls::sign::SigningKey;
 use rustls::Error;

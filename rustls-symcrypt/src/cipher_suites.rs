@@ -1,17 +1,21 @@
 //! Cipher Suites supported for TLS 1.3 and TLS 1.2
-
-use rustls::crypto::{KeyExchangeAlgorithm, CipherSuiteCommon};
-use rustls::{CipherSuite, SignatureScheme, SupportedCipherSuite, Tls13CipherSuite, Tls12CipherSuite};
 use crate::hash::{Sha256, Sha384};
 use crate::hmac::{HmacSha256, HmacSha384};
+use rustls::crypto::{CipherSuiteCommon, KeyExchangeAlgorithm};
+use rustls::{
+    CipherSuite, SignatureScheme, SupportedCipherSuite, Tls12CipherSuite, Tls13CipherSuite,
+};
 
-use crate::tls13::{Tls13ChaCha, Tls13Gcm};
-use crate::tls12::{Tls12ChaCha, Tls12Gcm};
+use crate::tls12::Tls12Gcm;
+use crate::tls13::Tls13Gcm;
 
-use rustls::crypto::tls13::HkdfUsingHmac;
+#[cfg(feature = "chacha")]
+use crate::tls12::Tls12ChaCha;
+#[cfg(feature = "chacha")]
+use crate::tls13::Tls13ChaCha;
+
 use rustls::crypto::tls12::PrfUsingHmac;
-
-
+use rustls::crypto::tls13::HkdfUsingHmac;
 
 /// Algo types for GCM TLS 1.3 and TLS 1.2
 pub enum AesGcm {
@@ -29,6 +33,7 @@ impl AesGcm {
 }
 
 /// The TLS1.3 ciphersuite TLS_CHACHA20_POLY1305_SHA256
+#[cfg(feature = "chacha")]
 pub static TLS13_CHACHA20_POLY1305_SHA256: SupportedCipherSuite =
     SupportedCipherSuite::Tls13(&Tls13CipherSuite {
         common: CipherSuiteCommon {
@@ -67,13 +72,14 @@ pub static TLS13_AES_128_GCM_SHA256: SupportedCipherSuite =
         hkdf_provider: &HkdfUsingHmac(&HmacSha256),
         aead_alg: &Tls13Gcm {
             algo_type: AesGcm::Aes128Gcm,
-        }, // do we want to support this? None is an option based on documenation.
+        },
         quic: None,
     });
 
 /// TLS 1.2
 
 /// The TLS1.2 ciphersuite TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256.
+#[cfg(feature = "chacha")]
 pub static TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256: SupportedCipherSuite =
     SupportedCipherSuite::Tls12(&Tls12CipherSuite {
         common: CipherSuiteCommon {
@@ -88,6 +94,7 @@ pub static TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256: SupportedCipherSuite =
     });
 
 /// The TLS1.2 ciphersuite TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+#[cfg(feature = "chacha")]
 pub static TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256: SupportedCipherSuite =
     SupportedCipherSuite::Tls12(&Tls12CipherSuite {
         common: CipherSuiteCommon {

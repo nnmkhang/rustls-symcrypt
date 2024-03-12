@@ -1,22 +1,19 @@
 [package]
 name = "rustls-symcrypt"
+authors = ["nnmkhang"]
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0 OR ISC OR MIT"
+description = "Implementation of rustls crypto provider model for SymCrypt"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#rustls = { git = "https://github.com/rustls/rustls.git" }
-#rustls = { path = "../../rustls/rustls", features = ["ring","logging", "tls12"] }
-rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }
+rustls = { version = "0.23.1", features = ["ring", "tls12", "std"], default-features = false }
 # Disable aws_ls_rc since it is not needed and increases build time.
-# uses '../../rust-symcrypt/rust-symcrypt/' when compiled locally, and uses
-# version 0.1.0 from crates.io when published
 symcrypt = {path = "../../rust-symcrypt/rust-symcrypt/", version = "0.1.0"}
-hex = "0.4.3"
 rustls-webpki = "0.102.2"
 cargo-llvm-cov = "0.6.6"
-
 
 [features]
 default = []
