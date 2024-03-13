@@ -32,6 +32,11 @@ pub struct KeyExchange {
 }
 
 /// All supported KeyExchange groups.
+/// ```rust, no_run
+/// SECP384R1
+/// SECP256R1
+/// X25519 // Enabled with the `x25519` feature
+/// ```
 pub const ALL_KX_GROUPS: &[&dyn SupportedKxGroup] = &[
     SECP256R1,
     SECP384R1,
@@ -81,6 +86,7 @@ impl SupportedKxGroup for KxGroup {
 
             // Have to pre-append 0x04 to the first element of the vec since SymCrypt expects the caller to do so,
             // and Rustls expects the crypto library to append the 0x04.
+            // X25519 does not have the legacy form requirement.
             pub_key.insert(0, 0x04);
         }
 
@@ -123,7 +129,7 @@ impl ActiveKeyExchange for KeyExchange {
                 &peer_pub_key[1..]
             }
             CurveType::Curve25519 => {
-                // Do not remove first byte for Curve22519
+                // Do not remove first byte for Curve22519, since Curve25519 only has the x and y coordinates.
                 peer_pub_key
             }
         };

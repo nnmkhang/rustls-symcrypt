@@ -12,10 +12,10 @@ use rustls::{CipherSuite, SupportedCipherSuite};
 use rustls_pemfile;
 
 use rustls_symcrypt::{
-    custom_symcrypt_provider, default_symcrypt_provider, SECP256R1, SECP384R1, X25519,
+    custom_symcrypt_provider, default_symcrypt_provider, SECP256R1, SECP384R1,
     TLS13_AES_128_GCM_SHA256, TLS13_AES_256_GCM_SHA384, TLS13_CHACHA20_POLY1305_SHA256,
-    TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+    TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, X25519,
 };
 
 static TEST_CERT_PATH: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(|| {
