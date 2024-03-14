@@ -2,12 +2,16 @@
 
 This crate provides integration for using `SymCrypt` cryptographic functionalities with the `rustls` crate, by implementing the required traits specified by `rustls`.
 
-**Note on Platform Support:** This crate is fully supported on `Windows AMD64` and `Linux Mariner` platforms. For `Ubuntu`, support is classified as partial. While `rustls-symcrypt` has undergone some testing on `Ubuntu`,
-full compatibility and performance cannot be guaranteed across all `Ubuntu` environments.
+## Platform Support
 
-**Notes:**
-- QUIC is not yet supported.
-- Integration with `rustls-cng` and `rustls-platform-verifier` are in progress.
+- Windows AMD64: Full support.
+- Linux Mariner: Full support.
+- Ubuntu: Partial support. While tested, full compatibility and optimal performance on all Ubuntu environments cannot be guaranteed.
+
+## Limitations
+
+- QUIC Protocol: Not supported.
+- Integration Efforts: Ongoing integration with rustls-cng and rustls-platform-verifier.
 
 ## Supported Ciphers
 
@@ -58,6 +62,8 @@ Add `rustls-symcrypt` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
+rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }
+# Disabling aws-lc as it slows down build times and is not needed.
 rustls_symcrypt = "0.1.0"
 # To enable the chacha feature:
 # rustls_symcrypt = {version = "0.1.0", features = ["chacha"]}

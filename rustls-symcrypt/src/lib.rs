@@ -19,7 +19,7 @@
 //!
 //! ### TLS 1.3
 //!
-//! ```rust, no_run
+//! ```ignore
 //! TLS13_AES_256_GCM_SHA384
 //! TLS13_AES_128_GCM_SHA256
 //! TLS13_CHACHA20_POLY1305_SHA256 // Enabled with the `chacha` feature
@@ -29,7 +29,7 @@
 //!
 //! ### TLS 1.2
 //!
-//! ```rust, no_run
+//! ```ignore
 //! TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
 //! TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 //! TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 // Enabled with the `chacha` feature
@@ -42,7 +42,7 @@
 //!
 //! Key exchanges are listed below, ordered by preference. IE: `SECP384R1` is preferred over `SECP256R1`.
 //!
-//! ```rust, no_run
+//! ```ignore
 //! SECP384R1
 //! SECP256R1
 //! X25519 // Enabled with the `x25519` feature
@@ -63,6 +63,8 @@
 //!
 //! ```toml
 //! [dependencies]
+//! rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }
+//! # Disabling aws-lc as it slows down build times and is not needed.
 //! rustls_symcrypt = "0.1.0"
 //! # To enable the chacha feature:
 //! # rustls_symcrypt = {version = "0.1.0", features = ["chacha"]}
@@ -139,15 +141,6 @@ mod hmac;
 mod signer;
 mod tls12;
 mod tls13;
-
-// TODO:
-// write documentation and make readme for rustls-symcrypt
-// write documentation for the outer readme
-// run thru cargo fmt
-// update the info for rust-symcrypt, add the release page with the testmodule, point to that page
-// remove the bin folders from rust-symcrypt repo and the crate
-// update crate version to major version 2
-// add release notes for rust symcrypt
 
 /// Exporting default cipher suites for TLS 1.3
 pub use cipher_suites::{TLS13_AES_128_GCM_SHA256, TLS13_AES_256_GCM_SHA384};
@@ -273,7 +266,7 @@ pub fn custom_symcrypt_provider(
 
 /// List of SymCrypt supported cipher suites in a preference order.
 /// The first element has highest priority when negotiating cipher suites.
-/// ```rust, no_run
+/// ```ignore
 /// // TLS 1.3 suites
 /// TLS13_AES_256_GCM_SHA384
 /// TLS13_AES_128_GCM_SHA256

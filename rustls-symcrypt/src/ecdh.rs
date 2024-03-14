@@ -32,7 +32,7 @@ pub struct KeyExchange {
 }
 
 /// All supported KeyExchange groups.
-/// ```rust, no_run
+/// ```ignore
 /// SECP384R1
 /// SECP256R1
 /// X25519 // Enabled with the `x25519` feature
