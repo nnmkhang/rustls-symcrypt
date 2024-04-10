@@ -298,6 +298,7 @@ static ALL_CIPHER_SUITES: &[SupportedCipherSuite] = &[
     TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
 ];
 
+// TODO: Switch to symcrypt for verification
 static SUPPORTED_SIG_ALGS: WebPkiSupportedAlgorithms = WebPkiSupportedAlgorithms {
     all: &[
         webpki_algs::ECDSA_P256_SHA256,
