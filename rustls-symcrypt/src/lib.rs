@@ -37,7 +37,8 @@
 //! TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 //! TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 // Enabled with the `chacha` feature
 //! ```
-//!
+//!**Note:** `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` is disabled by default. Enable the `chacha` feature in your `Cargo.toml` to use this cipher suite.
+//! 
 //! ## Supported Key Exchanges
 //!
 //! Key exchanges are listed below, ordered by preference. IE: `SECP384R1` is preferred over `SECP256R1`.
@@ -205,7 +206,7 @@ pub fn default_symcrypt_provider() -> CryptoProvider {
 /// `provided_cipher_suites` takes in an optional `Vec<>` of `SupportedCipherSuites`
 /// The supplied arguments for `provided_cipher_suite` will be used when when negotiating the TLS cipher suite;
 /// and should be placed in preference order, where the first element has highest priority.
-/// If `None` or an empty `Vec<>` is provided the default will be used instead.
+/// If `None` or an empty `Vec<>` is provided the [`DEFAULT_CIPHER_SUITES`] will be used instead.
 ///
 /// `provided_kx_group` takes in an optional `Vec<>` of `SupportedKxGroup`
 /// The supplied arguments for `provided_kx_group` will be used when when negotiating the TLS key exchange;

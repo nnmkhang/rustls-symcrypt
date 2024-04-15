@@ -38,6 +38,9 @@ TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 // Enabled with the `chacha` feature
 ```
 
+**Note:** `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` is disabled by default. Enable the `chacha` feature in your `Cargo.toml` to use this cipher suite.
+
+
 ## Supported Key Exchanges
 
 Key exchanges are listed below, ordered by preference. IE: `SECP384R1` is preferred over `SECP256R1`.
@@ -62,8 +65,8 @@ Add `rustls-symcrypt` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }
 # Disabling aws-lc as it slows down build times and is not needed.
+rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }
 rustls_symcrypt = "0.1.0"
 # To enable the chacha feature:
 # rustls_symcrypt = {version = "0.1.0", features = ["chacha"]}
