@@ -74,20 +74,24 @@ impl SupportedKxGroup for KxGroup {
             .get_public_key_bytes()
             .map_err(|_| GetRandomFailed)?;
 
-        if ecdh_state.get_curve() == CurveType::NistP256
-            || ecdh_state.get_curve() == CurveType::NistP384
-        {
-            // Based on RFC 8446 https://www.rfc-editor.org/rfc/rfc8446#section-4.2.8.2.
-            // struct {
-            //     uint8 legacy_form = 4;
-            //     opaque X[coordinate_length];
-            //     opaque Y[coordinate_length];
-            // } UncompressedPointRepresentation;
+        // Based on RFC 8446 https://www.rfc-editor.org/rfc/rfc8446#section-4.2.8.2.
+        // struct {
+        //     uint8 legacy_form = 4;
+        //     opaque X[coordinate_length];
+        //     opaque Y[coordinate_length];
+        // } UncompressedPointRepresentation;
 
-            // Have to pre-append 0x04 to the first element of the vec since SymCrypt expects the caller to do so,
-            // and Rustls expects the crypto library to append the 0x04.
-            // X25519 does not have the legacy form requirement.
-            pub_key.insert(0, 0x04);
+        // Have to pre-append 0x04 to the first element of the vec since SymCrypt expects the caller to do so,
+        // and Rustls expects the crypto library to append the 0x04.
+        // X25519 does not have the legacy form requirement.
+        match ecdh_state.get_curve() {
+            CurveType::NistP256 | CurveType::NistP384 => {
+            pub_key.insert(0, 0x04); // Prepend legacy byte to public key
+            },
+            
+            CurveType::Curve25519 => {
+                // Curve25519 curve does not require public key prepending
+            }
         }
 
         Ok(Box::new(KeyExchange {
