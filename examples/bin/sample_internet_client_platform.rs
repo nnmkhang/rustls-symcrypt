@@ -1,5 +1,5 @@
-use rustls_symcrypt::default_symcrypt_provider;
 use rustls_platform_verifier::Verifier;
+use rustls_symcrypt::default_symcrypt_provider;
 
 use std::io::{stdout, Read, Write};
 use std::net::TcpStream;
@@ -15,7 +15,9 @@ fn main() {
         .with_safe_default_protocol_versions()
         .unwrap()
         .dangerous()
-        .with_custom_certificate_verifier(Arc::new(Verifier::new().with_provider(Arc::new(default_symcrypt_provider()))))
+        .with_custom_certificate_verifier(Arc::new(
+            Verifier::new().with_provider(Arc::new(default_symcrypt_provider())),
+        ))
         .with_no_client_auth();
 
     let server_name = "www.rust-lang.org".try_into().unwrap();

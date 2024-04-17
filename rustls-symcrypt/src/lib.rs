@@ -38,7 +38,7 @@
 //! TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 // Enabled with the `chacha` feature
 //! ```
 //!**Note:** `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` is disabled by default. Enable the `chacha` feature in your `Cargo.toml` to use this cipher suite.
-//! 
+//!
 //! ## Supported Key Exchanges
 //!
 //! Key exchanges are listed below, ordered by preference. IE: `SECP384R1` is preferred over `SECP256R1`.

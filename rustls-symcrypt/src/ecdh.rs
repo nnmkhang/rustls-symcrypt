@@ -86,9 +86,9 @@ impl SupportedKxGroup for KxGroup {
         // X25519 does not have the legacy form requirement.
         match ecdh_state.get_curve() {
             CurveType::NistP256 | CurveType::NistP384 => {
-            pub_key.insert(0, 0x04); // Prepend legacy byte to public key
-            },
-            
+                pub_key.insert(0, 0x04); // Prepend legacy byte to public key
+            }
+
             CurveType::Curve25519 => {
                 // Curve25519 curve does not require public key prepending
             }
