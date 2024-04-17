@@ -27,11 +27,11 @@ const CHACHA_KEY_LENGTH: usize = 32;
 /// ChaCha functionality will be disabled by default, in order to enable ChaCha functionality,
 /// user must pass the "chacha" feature via `Cargo.toml`
 
-/// [`Tls12ChaCha`] impls [`Tls12AeadAlgorithm`].
+/// `Tls12ChaCha` impls `Tls12AeadAlgorithm`.
 #[cfg(feature = "chacha")]
 pub struct Tls12ChaCha;
 
-/// `TLs12ChaCha20Poly1305` impls [`MessageEncrypter`] and [`MessageDecrypter`]
+/// `TLs12ChaCha20Poly1305` impls `MessageEncrypter` and `MessageDecrypter`
 /// `key` is a ChaCha key and must be 32 bytes long.
 /// `iv` is an initialization vector that is needed to create the unique nonce.
 #[cfg(feature = "chacha")]
@@ -88,8 +88,8 @@ impl Tls12AeadAlgorithm for Tls12ChaCha {
     }
 }
 
-/// [`MessageEncrypter`] for ChaCha 1.2
-/// the `payload` field that comes from the [`OutboundPlainMessage`] is structured to include the message which is an arbitrary length,
+/// `MessageEncrypter` for ChaCha 1.2
+/// the `payload` field that comes from the `OutboundPlainMessage` is structured to include the message which is an arbitrary length,
 /// and  the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                        ^  ^                                                   ^
@@ -143,8 +143,8 @@ impl MessageEncrypter for Tls12ChaCha20Poly1305 {
     }
 }
 
-/// [`MessageDecrypter`] for ChaCha 1.2
-/// the `payload` field that comes from the [`InboundOpaqueMessage`] is structured to include the message which is an arbitrary length,
+/// `MessageDecrypter` for ChaCha 1.2
+/// the `payload` field that comes from the `InboundOpaqueMessage` is structured to include the message which is an arbitrary length,
 /// and  the tag which is 16 bytes.
 /// ex : [1, 2, 3, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16]
 ///       ^                        ^  ^                                                   ^

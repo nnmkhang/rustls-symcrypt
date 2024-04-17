@@ -66,7 +66,7 @@ pub const SECP384R1: &dyn SupportedKxGroup = &KxGroup {
 ///
 /// `start()` creates a new `symcrypt_sys::EcDh` struct and subsequently, a new [`KeyExchange`] struct.
 ///
-/// `name()` returns the [`NamedGroup`] of the current [`KeyExchange`] group.
+/// `name()` returns the `NamedGroup` of the current [`KeyExchange`] group.
 impl SupportedKxGroup for KxGroup {
     fn start(&self) -> Result<Box<(dyn ActiveKeyExchange)>, Error> {
         let ecdh_state = EcDh::new(self.curve_type).map_err(|_| GetRandomFailed)?;
@@ -107,7 +107,7 @@ impl SupportedKxGroup for KxGroup {
     }
 }
 
-/// Impl for the trait for [`ActiveKeyExchange`] in order to do stateful operations on the [`EcDh`] state.
+/// Impl for the trait for `ActiveKeyExchange` in order to do stateful operations on the [`EcDh`] state.
 ///
 /// `complete()` takes in a `peer_pub_key` and creates a secondary [`EcDh`] struct in order to generate the secret agreement.
 ///
