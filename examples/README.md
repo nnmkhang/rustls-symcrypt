@@ -21,7 +21,7 @@ This example establishes a TLS connection to `rust-lang.org` using `default_symc
 
 ## 3. Sample Local Client (`sample_local_client`)
 
-This example shows how to connect to a local server on `localhost:4444` using `custom_symcrypt_provider()`. This program requires the usage of a sample root ca which has been provided and is named `RootCA.pem`. To get the client to connect to connect, you can either start the `sample_server` in a separate terminal window, or you can start a simple openssl server in a separate terminal window.
+This example shows how to connect to a local server on `localhost:4444` using `custom_symcrypt_provider()`. This program requires the usage of a sample Root CA which has been provided and is named `RootCA.pem`. To get the client to connect, you can either start the `sample_server` in a separate terminal window, or you can start a simple openssl server in a separate terminal window.
 
 To spin up a simple openssl server please use the following from the `bin/certs` folder:
 

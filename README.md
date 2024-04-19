@@ -5,7 +5,7 @@ This crate provides integration for using [rust-symcrypt](https://github.com/mic
 ## Status and Platform Support:
 - Currently works with: `rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }`
 - Windows AMD64: Full support.
-- Linux Mariner: Full support.
+- Azure Linux: Full support.
 - Ubuntu: Partial support. While tested, full compatibility and optimal performance on all Ubuntu environments cannot be guaranteed.
 
 ## Dependencies
@@ -44,8 +44,8 @@ TLS13_CHACHA20_POLY1305_SHA256 // Enabled with the `chacha` feature
 ### TLS 1.2
 
 ```ignore
-TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 // Enabled with the `chacha` feature
 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
