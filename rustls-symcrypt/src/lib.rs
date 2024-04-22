@@ -5,7 +5,7 @@
 //! ## Platform Support
 //!
 //! - Windows AMD64: Full support.
-//! - Linux Mariner: Full support.
+//! - Azure Linux: Full support.
 //! - Ubuntu: Partial support. While tested, full compatibility and optimal performance on all Ubuntu environments cannot be guaranteed
 //!
 //! ## Limitations
