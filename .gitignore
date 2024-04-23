@@ -1,1 +1,5 @@
-/target
+rustls/symcrypt/.vscode/settings.json
+examples/target
+rustls-symcrypt/lcov.info
+rustls-symcrypt/.vscode/settings.json
+rustls-symcrypt/target
