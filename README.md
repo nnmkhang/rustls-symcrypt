@@ -3,7 +3,7 @@
 This crate provides integration for using [rust-symcrypt](https://github.com/microsoft/rust-symcrypt) cryptographic functionalities with  [rustls](https://github.com/rustls/rustls), by implementing the required traits specified by `rustls`.
 
 ## Status and Platform Support:
-- Currently works with: `rustls = { version = "0.23.0", features = ["ring", "tls12", "std"], default-features = false }`
+- Currently works with: `rustls = { version = "0.23.0", features = ["tls12", "std"], default-features = false }`
 - Windows AMD64: Full support.
 - Azure Linux: Full support.
 - Ubuntu: Partial support. While tested, full compatibility and optimal performance on all Ubuntu environments cannot be guaranteed.
